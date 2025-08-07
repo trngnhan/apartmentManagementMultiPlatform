@@ -6,19 +6,6 @@ from cloudinary.models import CloudinaryField
 from datetime import datetime
 import calendar
 
-# Utilities
-
-def get_default_end_date():
-    now = datetime.now()
-    last_day = calendar.monthrange(now.year, now.month)[1]
-    return datetime(now.year, now.month, last_day)
-
-def current_month():
-    return datetime.now().month
-
-def current_year():
-    return datetime.now().year
-
 # Base Model
 class BaseModel(models.Model):
     active = models.BooleanField(default=True)
@@ -90,7 +77,7 @@ class Apartment(BaseModel):
     building = models.CharField(max_length=1, choices=Building.choices)
     floor = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(20)])
     number = models.CharField(max_length=10)
-    owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='owned_apartments')
+    owner = models.ForeignKey(Resident, on_delete=models.SET_NULL, null=True, related_name='owned_apartments')
 
     def __str__(self):
         return f'{self.building} - Tầng {self.floor} - Căn {self.number}'
@@ -98,8 +85,8 @@ class Apartment(BaseModel):
 # Apartment Transfer
 class ApartmentTransferHistory(BaseModel):
     apartment = models.ForeignKey(Apartment, on_delete=models.CASCADE, related_name='transfer_history')
-    previous_owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='previous_apartment_owners')
-    new_owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='new_apartment_owners')
+    previous_owner = models.ForeignKey(Resident, on_delete=models.SET_NULL, null=True, related_name='previous_apartment_owners')
+    new_owner = models.ForeignKey(Resident, on_delete=models.SET_NULL, null=True, related_name='new_apartment_owners')
     transfer_date = models.DateField(default=datetime.now)
     note = models.TextField(blank=True, null=True)
 
@@ -119,15 +106,20 @@ class PaymentCategory(BaseModel):
     frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='MONTHLY')  # Tần suất thanh toán
     tax_percentage = models.DecimalField(max_digits=5, decimal_places=2,
                                          default=0)  # Phần trăm thuế phải trả cho loại phí này
-    grace_period = models.IntegerField(default=0)  # Thời gian ân hạn sau ngày hết hạn thanh toán (đơn vị: ngày)
+    grace_period = models.IntegerField(default=0)
     category_type = models.CharField(
         max_length=50,
         choices=[('MAINTENANCE', 'Bảo trì'), ('UTILITY', 'Tiện ích'), ('SERVICE', 'Dịch vụ')],
         default='MAINTENANCE'
-    )  # Loại phí, ví dụ phí bảo trì, tiện ích, dịch vụ...
+    )
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        self.total_amount = self.amount + (self.amount * self.tax_percentage / 100)
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        formatted_amount = f"{self.amount:,.0f}".replace(',', '.')
+        formatted_amount = f"{self.total_amount:,.0f}".replace(',', '.')
         return f"{self.name} - {formatted_amount} VND"
 
 # Payment Transaction
@@ -139,15 +131,15 @@ class PaymentTransaction(BaseModel):
         CASH = 'CASH', 'Cash Payment'
 
     apartment = models.ForeignKey(Apartment, on_delete=models.CASCADE, related_name='payments')
-    category = models.ForeignKey(PaymentCategory, on_delete=models.SET_NULL, null=True)  # Loại phí này thuộc về đâu
-    amount = models.DecimalField(max_digits=10, decimal_places=2)  # Số tiền giao dịch
-    method = models.CharField(max_length=20, choices=Method.choices)  # Phương thức thanh toán (MoMo, VNPay, v.v.)
+    category = models.ForeignKey(PaymentCategory, on_delete=models.SET_NULL, null=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    method = models.CharField(max_length=20, choices=Method.choices)
     transaction_id = models.CharField(max_length=100, blank=True,
-                                      null=True)  # ID giao dịch (tùy theo phương thức thanh toán)
-    status = models.CharField(max_length=20, default='PENDING')  # Trạng thái thanh toán (Chờ xử lý, Đã thanh toán...)
-    payment_proof = CloudinaryField(null=True, blank=True)  # Hình ảnh chứng từ thanh toán (chứng từ thanh toán)
-    paid_date = models.DateTimeField(null=True, blank=True)  # Thời gian thanh toán (nếu đã thanh toán)
-    transaction_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Phí giao dịch (nếu có)
+                                      null=True)
+    status = models.CharField(max_length=20, default='PENDING')
+    payment_proof = CloudinaryField(null=True, blank=True)
+    paid_date = models.DateTimeField(null=True, blank=True)
+    transaction_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     STATUS_CHOICES = [
         ('PENDING', 'Chờ xử lý'),
@@ -156,7 +148,7 @@ class PaymentTransaction(BaseModel):
         ('REFUNDED', 'Đã hoàn lại'),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES,
-                              default='PENDING')  # Trạng thái giao dịch thanh toán
+                              default='PENDING')
 
     def __str__(self):
         # Định dạng số tiền
@@ -164,17 +156,10 @@ class PaymentTransaction(BaseModel):
         return f"Transaction {self.transaction_id} - {self.status} - {formatted_amount} VND"
 
     def process_payment(self):
-        # Phương thức này có thể được sử dụng để xử lý logic thanh toán, ví dụ như chuyển trạng thái giao dịch
-        # từ PENDING sang COMPLETED nếu thanh toán thành công.
         if self.status == 'PENDING':
             self.status = 'COMPLETED'
             self.paid_date = now()
             self.save()
-
-# Firebase Token
-class FirebaseToken(BaseModel):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='firebase_token')
-    token = models.CharField(max_length=255)
 
 # Parcel Locker
 class ParcelLocker(BaseModel):
@@ -248,4 +233,3 @@ class AmenityBooking(BaseModel):
 
     def __str__(self):
         return f"{self.resident.user.email} đăng ký {self.amenity.name} ngày {self.booking_date}"
-

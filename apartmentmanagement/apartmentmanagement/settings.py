@@ -168,12 +168,21 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [BASE_DIR / 'apartments' / 'static']
+#STATICFILES_DIRS = [BASE_DIR / 'apartments' / 'static']
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+#9/6/2025
+#"5cniiEqy7JtaONRehHdkeeGy8mOGaDj3DJJw1Ezf"
+#"CKcFnIjBVK1eDFimILXPduPEG0tLBY8HsoJjfURUtEsaNt6OO0V7SlmzhGzUZkLIySyrWkL2pEEb1iAd7jlQw1SHwk8XBTSqmKoHEEk6P6pkhlBKZlwiloqswJBozcjj"
+
 #CLIENT_ID = "aRgWqcaZzcRboHVnz6xZp5VR30eeiV4gBTC3cud6"
 #CLIENT_SECRET = "jwA8QVO1jqScm0taMdfbTDLBfqovrqvQKXQo0L8fbd9CzEJWdbRfww4yFMpSSZjt3e9jG9V3S8fHcKFnrTo8lUwbFyAliMAsKAdgmXzccGZiwGFCzyt0DyFNz6jHHYRB"
+
+MOMO_ACCESS_KEY = 'F8BBA842ECF85'
+MOMO_SECRET_KEY = 'K951B6PE1waDMi640xX08PD3vg6EkVlz'
+MOMO_REDIRECT_URL = 'apartmentmanagement://payment-callback'
+MOMO_IPN_URL = 'https://abc123.ngrok-free.app/paymenttransactions/momo-ipn/'

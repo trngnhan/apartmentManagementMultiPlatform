@@ -1,32 +1,22 @@
-from rest_framework import serializers
+from rest_framework import serializers, generics
 from django.contrib.auth import get_user_model
-from rest_framework.serializers import ModelSerializer
-
-from .models import (Resident, Apartment,ApartmentTransferHistory, PaymentCategory, PaymentTransaction, FirebaseToken, ParcelLocker, ParcelItem,
-                    Feedback, Survey, SurveyOption, SurveyResponse, VisitorVehicleRegistration)
+from .models import (Resident, Apartment,ApartmentTransferHistory, PaymentCategory, PaymentTransaction,
+                     ParcelLocker, ParcelItem, Feedback, Survey, SurveyOption, SurveyResponse,
+                     VisitorVehicleRegistration)
 
 User = get_user_model()
-
-class ItemSerializer(ModelSerializer):
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        resident = getattr(instance, 'resident_profile', None)
-        if resident and resident.user and resident.user.profile_picture:
-            data['profile_picture'] = resident.user.profile_picture.url
-        else:
-            data['profile_picture'] = ''
-        return data
-
 
 # User Serializer
 class UserSerializer(serializers.ModelSerializer):
     profile_picture = serializers.ImageField(required=False, allow_null=True, use_url=True)
-    resident_id = serializers.SerializerMethodField()  # Thêm trường resident_id
+    resident_id = serializers.SerializerMethodField()
+    locker_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'password', 'first_name', 'last_name', 'profile_picture', 'role',
-                  'must_change_password', 'resident_id', 'phone_number', 'is_superuser', 'is_staff', 'active']
+                  'must_change_password', 'resident_id', 'phone_number', 'is_superuser', 'is_staff', 'active',
+                  'locker_id']
         read_only_fields = ['date_joined']
         extra_kwargs = {
             'password': {'write_only': True}
@@ -49,17 +39,23 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def get_resident_id(self, obj):
-        # Lấy resident_id từ Resident liên kết với User
         try:
-            return obj.resident_profile.id  # Truy cập quan hệ resident_profile
+            return obj.resident_profile.id
         except AttributeError:
-            return None  # Trả về None nếu không có Resident liên kết
+            return None
 
+    def get_locker_id(self, obj):
+        resident = getattr(obj, 'resident_profile', None)
+        if resident:
+            from apartments.models import ParcelLocker
+            locker = ParcelLocker.objects.filter(resident=resident).first()
+            return locker.id if locker else None
+        return None
 
 # Resident Serializer
 class ResidentSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    image = serializers.ImageField(source='user.profile_picture', read_only=True)  # Trực tiếp lấy ảnh từ User
+    image = serializers.ImageField(source='user.profile_picture', read_only=True)
 
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
@@ -75,9 +71,9 @@ class ResidentSerializer(serializers.ModelSerializer):
 
 # Apartment Serializer
 class ApartmentSerializer(serializers.ModelSerializer):
-    owner_email = serializers.EmailField(source='owner.email', read_only=True)
-    first_name = serializers.CharField(source='owner.first_name', read_only=True)
-    last_name = serializers.CharField(source='owner.last_name', read_only=True)
+    owner_email = serializers.EmailField(source='owner.user.email', read_only=True)
+    first_name = serializers.CharField(source='owner.user.first_name', read_only=True)
+    last_name = serializers.CharField(source='owner.user.last_name', read_only=True)
 
     class Meta:
         model = Apartment
@@ -86,28 +82,30 @@ class ApartmentSerializer(serializers.ModelSerializer):
 
 # Apartment Transfer History Serializer
 class ApartmentTransferHistorySerializer(serializers.ModelSerializer):
-    previous_owner_email = serializers.EmailField(source='previous_owner.email', read_only=True)
-    new_owner_email = serializers.EmailField(source='new_owner.email', read_only=True)
+    previous_owner_email = serializers.EmailField(source='previous_owner.user.email', read_only=True)
+    new_owner_email = serializers.EmailField(source='new_owner.user.email', read_only=True)
     apartment_code = serializers.CharField(source='apartment.code', read_only=True)
 
     class Meta:
         model = ApartmentTransferHistory
-        fields = ['id', 'apartment', 'apartment_code', 'previous_owner', 'previous_owner_email',
-                  'new_owner', 'new_owner_email', 'transfer_date']
+        fields = [
+            'id', 'apartment', 'apartment_code', 'previous_owner', 'previous_owner_email',
+            'new_owner', 'new_owner_email', 'transfer_date'
+        ]
         read_only_fields = ['created_date', 'updated_date']
 
 
 # Payment Category Serializer
 class PaymentCategorySerializer(serializers.ModelSerializer):
+
     class Meta:
         model = PaymentCategory
         fields = ['id', 'name', 'amount', 'is_recurring', 'description', 'active', 'frequency',
-                  'tax_percentage', 'grace_period', 'category_type', 'created_date']
+                  'tax_percentage', 'grace_period', 'category_type', 'created_date', 'total_amount']
         read_only_fields = ['created_date', 'updated_date']
 
     def validate_amount(self, value):
         #Kiểm tra giá trị amount phải là số dương.
-
         if value <= 0:
             raise serializers.ValidationError("Số tiền phải lớn hơn 0.")
         return value
@@ -119,7 +117,7 @@ class PaymentCategorySerializer(serializers.ModelSerializer):
         return value
 
 # Payment Transaction Serializer
-class PaymentTransactionSerializer(serializers.ModelSerializer):
+class PaymentTransactionSerializer(serializers.ModelSerializer, generics.ListAPIView):
     apartment_code = serializers.CharField(source='apartment.code', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
     payment_proof_url = serializers.SerializerMethodField()
@@ -133,7 +131,6 @@ class PaymentTransactionSerializer(serializers.ModelSerializer):
 
     def get_payment_proof_url(self, obj):
        # Trả về URL của payment_proof nếu có.
-
         if obj.payment_proof:
             return obj.payment_proof.url
         return None
@@ -150,17 +147,6 @@ class PaymentTransactionSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError("Transaction ID không được để trống.")
         return value
-
-
-# Firebase Token Serializer
-class FirebaseTokenSerializer(serializers.ModelSerializer):
-    user_email = serializers.EmailField(source='user.email', read_only=True)
-
-    class Meta:
-        model = FirebaseToken
-        fields = ['user', 'user_email', 'token', 'created_date', 'updated_date']
-        read_only_fields = ['created_date', 'updated_date']
-
 
 # Parcel Locker Serializer
 class ParcelItemSerializer(serializers.ModelSerializer):
@@ -191,7 +177,7 @@ class ParcelLockerSerializer(serializers.ModelSerializer):
         fields = ['id', 'resident_id', 'resident_email', 'first_name', 'last_name', 'active', 'resident']
         read_only_fields = ['created_date', 'updated_date']
         extra_kwargs = {
-            'resident': {'read_only': True}  # để không bị lỗi
+            'resident': {'read_only': True}
         }
 
 # Feedback Serializer
@@ -247,9 +233,11 @@ class SurveySerializer(serializers.ModelSerializer):
 # Visitor Vehicle Registration Serializer
 class VisitorVehicleRegistrationSerializer(serializers.ModelSerializer):
     resident_email = serializers.EmailField(source='resident.user.email', read_only=True)
+    first_name = serializers.CharField(source='resident.user.first_name', read_only=True)
+    last_name = serializers.CharField(source='resident.user.last_name', read_only=True)
 
     class Meta:
         model = VisitorVehicleRegistration
-        fields = ['resident_id', 'resident_email', 'visitor_name', 'vehicle_number',
-                  'registration_date', 'approved']
+        fields = ['id', 'resident_id', 'resident_email', 'visitor_name', 'vehicle_number',
+                  'registration_date', 'approved', 'first_name', 'last_name']
         read_only_fields = ['registration_date', 'created_date', 'updated_date']

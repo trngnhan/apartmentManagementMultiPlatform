@@ -2,10 +2,14 @@ from django.urls import path, include
 from . import views
 from rest_framework.routers import DefaultRouter
 
-from .views import (resident_login_view, resident_home_view, UserViewSet, ResidentViewSet,
+from .views import (UserViewSet, ResidentViewSet,
                     ApartmentViewSet, ApartmentTransferHistoryViewSet, PaymentTransactionViewSet, PaymentCategoryViewSet,
-                    FirebaseTokenViewSet, ParcelLockerViewSet, FeedbackViewSet, SurveyViewSet, SurveyOptionViewSet,
+                    ParcelLockerViewSet, FeedbackViewSet, SurveyViewSet, SurveyOptionViewSet,
                     SurveyResponseViewSet, VisitorVehicleRegistrationViewSet)
+
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import PaymentCategoryViewSet, PaymentTransactionViewSet, momo_ipn
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
@@ -15,7 +19,6 @@ router.register(r'apartmentstranshistories', ApartmentTransferHistoryViewSet, ba
 router.register(r'paymentcategories', PaymentCategoryViewSet, basename='payment')
 router.register(r'paymenttransactions', PaymentTransactionViewSet, basename='paymenttransaction')
 router.register(r'paymentcategories', PaymentCategoryViewSet, basename='paymentcategory')
-router.register(r'firebasetokens', FirebaseTokenViewSet, basename='firebasetoken')
 router.register(r'parcellockers', ParcelLockerViewSet, basename='parcellocker')
 router.register(r'feedbacks', FeedbackViewSet, basename='feedback')
 router.register(r'surveys', SurveyViewSet, basename='survey')
@@ -24,11 +27,5 @@ router.register(r'surveyresponses', SurveyResponseViewSet, basename='surveyrespo
 router.register(r'visitorvehicleregistrations', VisitorVehicleRegistrationViewSet, basename='visitorvehicleregistration')
 urlpatterns = [
     path('', include(router.urls)),
-
-
-    path('login/', resident_login_view, name='resident_login'),
-    path('change-password/', views.change_password, name='change_password'),
-    path('upload-avatar/', views.upload_avatar, name='upload_avatar'),
-    path('home/', resident_home_view, name='resident_home'),
-    path('send-sms/', ParcelLockerViewSet.as_view({'post': 'send_sms'}), name='send-sms'),
+    path('paymenttransactions/momo-ipn/', views.momo_ipn, name='momo_ipn'),
 ]
