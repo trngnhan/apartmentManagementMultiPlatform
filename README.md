@@ -2,7 +2,7 @@
 
 ## 🏠 Giới thiệu
 
-Đây là một hệ thống quản lý cư dân chung cư đa nền tảng, bao gồm **trang web dành cho quản trị viên** và **ứng dụng di động dành cho cư dân**. Hệ thống giúp quản lý tài khoản, phản ánh, khảo sát, thanh toán điện tử, và tương tác thời gian thực giữa cư dân và ban quản trị.
+Đây là một hệ thống quản lý cư dân chung cư đa nền tảng, bao gồm **trang web dành cho quản trị viên** và **ứng dụng di động và website dành cho cư dân**. Hệ thống giúp quản lý tài khoản, phản ánh, khảo sát, thanh toán điện tử, và tương tác thời gian thực giữa cư dân và ban quản trị.
 
 - 🌐 Web (Admin): Xây dựng bằng **Django** + Django REST Framework
 - 🌐 Web (Resident Web App): Xây dụng bằng **ReactJS**
