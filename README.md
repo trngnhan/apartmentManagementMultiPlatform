@@ -5,6 +5,7 @@
 Đây là một hệ thống quản lý cư dân chung cư đa nền tảng, bao gồm **trang web dành cho quản trị viên** và **ứng dụng di động dành cho cư dân**. Hệ thống giúp quản lý tài khoản, phản ánh, khảo sát, thanh toán điện tử, và tương tác thời gian thực giữa cư dân và ban quản trị.
 
 - 🌐 Web (Admin): Xây dựng bằng **Django** + Django REST Framework
+- 🌐 Web (Resident Web App): Xây dụng bằng **ReactJS**
 - 📱 Mobile (Resident App): Xây dựng bằng **React Native**
 - ☁️ Dịch vụ thời gian thực và thông báo: **Firebase**
 - 💰 Thanh toán: Tích hợp **MoMo, VNPAY**
@@ -22,7 +23,7 @@
 - Nhận thông báo khi có hàng được gửi vào tủ đồ cư dân (qua FCM)
 - Chat thời gian thực với cư dân (Firebase Realtime Chat)
 
-### 👤 Cư dân (Mobile App - React Native)
+### 👤 Cư dân (Mobile App và Web App - React)
 - Đăng nhập hệ thống và cập nhật hồ sơ cá nhân
 - Đóng phí (quản lý, gửi xe, dịch vụ) qua chuyển khoản hoặc thanh toán online
 - Tra cứu hóa đơn
@@ -39,11 +40,11 @@
 | Thành phần | Công nghệ |
 |-----------|-----------|
 | Backend   | Django, Django REST Framework |
-| Frontend (Web) | Django Template |
-| Mobile App | React Native, Expo |
+| Frontend (Web App) | ReactJS |
+| Frontend (Mobile App) | React Native, Expo |
 | Realtime Chat + Notifications | Firebase Realtime Database, Firebase Cloud Messaging (FCM) |
 | Thanh toán | MoMo API, VNPAY API |
-| Lưu trữ ảnh/giấy tờ | Cloudinary |
+| Lưu trữ ảnh | Cloudinary |
 | Định vị và bản đồ | react-native-maps |
 
 ---
