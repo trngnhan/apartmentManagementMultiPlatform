@@ -14,10 +14,12 @@
     import AsyncStorage from "@react-native-async-storage/async-storage";
     import { LinearGradient } from "expo-linear-gradient";
     import MyStyles from "../../styles/MyStyles";
-    import { useNavigation } from "@react-navigation/native";
+    import { useNavigation, useRoute } from "@react-navigation/native";
     import { Picker } from "@react-native-picker/picker";
+    import { endpoints, authApis } from "../../configs/Apis";
 
     const AdminLocker = () => {
+    const route = useRoute();
     const [lockers, setLockers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -26,6 +28,8 @@
     const [newLocker, setNewLocker] = useState({
         resident_id: null,
     });
+    const adminId = route.params?.adminId;
+    const residentId = route.params?.residentId;
 
     const sortedLockers = [...lockers].sort((a, b) => a.id - b.id);
     const nav = useNavigation();
@@ -33,48 +37,31 @@
     // Lấy danh sách tủ đồ từ API
     const fetchLockers = async () => {
         try {
-        const token = await AsyncStorage.getItem("token");
-        const response = await fetch("http://192.168.44.103:8000/parcellockers/", {
-            method: "GET",
-            headers: {
-            Authorization: `Bearer ${token}`,
-            },
-        });
-        if (response.ok) {
-            const data = await response.json();
+            const token = await AsyncStorage.getItem("token");
+            const api = authApis(token);
+            const response = await api.get(endpoints.lockers);
+            const data = response.data;
+            console.log("Danh sách tủ đồ:", data);
             setLockers(data.results || data);
-        } else {
-            setError("Không thể tải danh sách tủ đồ.");
-        }
         } catch (error) {
-        console.error("Lỗi khi gọi API tủ đồ:", error);
-        setError("Đã xảy ra lỗi khi tải danh sách tủ đồ.");
+            console.error("Lỗi khi gọi API tủ đồ:", error);
+            setError("Đã xảy ra lỗi khi tải danh sách tủ đồ.");
         } finally {
-        setLoading(false);
+            setLoading(false);
         }
     };
 
     // Lấy danh sách cư dân chưa có tủ đồ
     const fetchUnregisteredResidents = async () => {
         try {
-        const token = await AsyncStorage.getItem("token");
-        const response = await fetch(
-            "http://192.168.44.103:8000/parcellockers/resident-without-locker/",
-            {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-            }
-        );
-        if (response.ok) {
-            const data = await response.json();
-            console.log("Danh sách cư dân chưa có tủ đồ:", data);  // debug
-            setUnregisteredResidents(data);
-        } else {
-            console.error("Lỗi khi lấy cư dân:", response.status);
-        }
+            const token = await AsyncStorage.getItem("token");
+            const api = authApis(token);
+            const response = await api.get(endpoints.unregisteredResidentsLocker);
+            const data = response.data;
+            console.log("Danh sách cư dân chưa có tủ đồ:", data);
+            setUnregisteredResidents(Array.isArray(data) ? data : data.results || []);
         } catch (error) {
-        console.error("Lỗi mạng:", error);
+            console.error("Lỗi mạng:", error);
         }
     };
 
@@ -85,7 +72,6 @@
     useEffect(() => {
         if (showModal) {
             fetchUnregisteredResidents();
-            // Reset chọn cư dân mỗi lần mở modal
             setNewLocker({ resident_id: null });
         }
     }, [showModal]);
@@ -94,57 +80,97 @@
     const createLocker = async () => {
         if (!newLocker.resident_id) {
             alert("Vui lòng chọn cư dân để tạo tủ đồ");
-        return;
-    }
+            return;
+        }
 
         try {
-        const token = await AsyncStorage.getItem("token");
-        console.log("Sending resident_id:", newLocker.resident_id);
-        const response = await fetch("http://192.168.44.103:8000/parcellockers/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
+            const token = await AsyncStorage.getItem("token");
+            const api = authApis(token);
+            console.log("Sending resident_id:", newLocker.resident_id);
+            const response = await api.post(endpoints.lockers, {
                 resident_id: newLocker.resident_id,
-            }),
-        });
+            });
 
-        if (response.ok) {
-            const data = await response.json();
+            const data = response.data;
             setLockers((prev) => [data, ...prev]);
             setShowModal(false);
             Alert.alert("Thành công", "Tủ đồ mới đã được thêm.");
-        } else {
-            alert("Không thể tạo tủ đồ. Vui lòng thử lại.");
-        }
         } catch (error) {
-        console.error("Lỗi tạo tủ đồ:", error);
-        alert("Đã xảy ra lỗi khi tạo tủ đồ.");
+            alert("Không thể tạo tủ đồ. Vui lòng thử lại.");
+            console.error("Lỗi tạo tủ đồ:", error);
         }
+    };
+
+    const handleDeleteLocker = async (id) => {
+        Alert.alert(
+            "Xác nhận",
+            "Bạn có chắc muốn xoá tủ đồ này?",
+            [
+                { text: "Hủy", style: "cancel" },
+                {
+                    text: "Xoá",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            const token = await AsyncStorage.getItem("token");
+                            const api = authApis(token);
+                            const res = await api.delete(`${endpoints.lockers}${id}/`);
+                            if (res.status === 204 || res.status === 200) {
+                                setLockers((prev) => prev.filter((locker) => locker.id !== id));
+                                Alert.alert("Thành công", "Đã xoá tủ đồ.");
+                            } else {
+                                Alert.alert("Lỗi", "Không thể xoá tủ đồ.");
+                            }
+                        } catch (err) {
+                            Alert.alert("Lỗi", "Có lỗi xảy ra khi xoá tủ đồ.");
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     // Hiển thị từng item tủ đồ
     const renderLocker = ({ item }) => (
-        <TouchableOpacity
-        style={[MyStyles.card, styles.lockerCard]}
-        onPress={() => nav.navigate("AdminLockerItems", { lockerId: item.id })}
-        >
-        <View style={{ alignItems: "center" }}>
-            <Image
-            source={require("../../assets/locker_resident.png")}
-            style={MyStyles.image}
-            />
+        <View style={[MyStyles.card, styles.lockerCard, { position: "relative" }]}>
+            <TouchableOpacity
+                style={{
+                    position: "absolute",
+                    top: 4,
+                    right: 4,
+                    zIndex: 10,
+                    backgroundColor: "#F44336",
+                    borderRadius: 12,
+                    width: 24,
+                    height: 24,
+                    alignItems: "center",
+                    justifyContent: "center",
+                }}
+                onPress={() => handleDeleteLocker(item.id)}
+            >
+                <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>×</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+                style={{ alignItems: "center" }}
+                onPress={() => nav.navigate("AdminLockerItems", {
+                    lockerId: item.id,
+                    adminId: adminId,
+                    residentId: item.resident,
+                })}
+            >
+                <Image
+                    source={require("../../assets/locker_resident.png")}
+                    style={MyStyles.image}
+                />
+                <Text style={styles.Text}>{item.id}</Text>
+                <Text style={[MyStyles.description, { textAlign: "center" }]}>
+                    {item.first_name} {item.last_name}
+                </Text>
+                <Text style={[MyStyles.description, { fontSize: 12 }]}>
+                    {item.active ? "✅" : "❌"}
+                </Text>
+            </TouchableOpacity>
         </View>
-        <Text style={styles.Text}>{item.id}</Text>
-        <Text style={[MyStyles.description, { textAlign: "center" }]}>
-            {item.first_name} {item.last_name}
-        </Text>
-        <Text style={[MyStyles.description, { fontSize: 12 }]}>
-            {item.active ? "✅" : "❌"}
-        </Text>
-        </TouchableOpacity>
     );
 
     return (

@@ -92,26 +92,27 @@ class ApartmentTransferHistory(BaseModel):
 
 # Payment Category: định nghĩa, quản lý các loại phí
 class PaymentCategory(BaseModel):
+    class PaymentFrequency(models.TextChoices):
+        ONE_TIME = "ONE_TIME", "One Time"
+        MONTHLY = "MONTHLY", "Monthly"
+        QUARTERLY = "QUARTERLY", "Quarterly"
+        YEARLY = "YEARLY", "Yearly"
+
+    class PaymentCategoryType(models.TextChoices):
+        MAINTENANCE = "MAINTENANCE", "Maintenance"
+        UTILITY = "UTILITY", "Utility"
+        SERVICE = "SERVICE", "Service"
+
     name = models.CharField(max_length=100)  # Tên loại thanh toán, ví dụ "Phí quản lý", "Phí gửi xe"
     amount = models.DecimalField(max_digits=10, decimal_places=2)  # Số tiền phải thanh toán
     is_recurring = models.BooleanField(
         default=True)  # Liệu đây có phải là loại phí định kỳ không (như hàng tháng, hàng năm...)
     description = models.TextField(blank=True, null=True)  # Mô tả chi tiết về loại phí
-    FREQUENCY_CHOICES = [
-        ('ONE_TIME', 'Một lần'),
-        ('MONTHLY', 'Hàng tháng'),
-        ('QUARTERLY', 'Hàng quý'),
-        ('YEARLY', 'Hàng năm'),
-    ]
-    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='MONTHLY')  # Tần suất thanh toán
+    frequency = models.CharField(max_length=20, choices=PaymentFrequency.choices) #tần suất thanh toán
     tax_percentage = models.DecimalField(max_digits=5, decimal_places=2,
                                          default=0)  # Phần trăm thuế phải trả cho loại phí này
     grace_period = models.IntegerField(default=0)
-    category_type = models.CharField(
-        max_length=50,
-        choices=[('MAINTENANCE', 'Bảo trì'), ('UTILITY', 'Tiện ích'), ('SERVICE', 'Dịch vụ')],
-        default='MAINTENANCE'
-    )
+    category_type = models.CharField(max_length=20, choices=PaymentCategoryType.choices)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True)
 
     def save(self, *args, **kwargs):
@@ -127,8 +128,12 @@ class PaymentTransaction(BaseModel):
     class Method(models.TextChoices):
         MOMO = 'MOMO', 'MoMo'
         VNPAY = 'VNPAY', 'VNPay'
-        BANK = 'BANK', 'Bank Transfer'
-        CASH = 'CASH', 'Cash Payment'
+
+    class PaymentStatus(models.TextChoices):
+        PENDING = 'PENDING', 'Chờ xử lý'
+        COMPLETED = 'COMPLETED', 'Hoàn tất'
+        FAILED = 'FAILED', 'Thất bại'
+        REFUNDED = 'REFUNDED', 'Đã hoàn lại'
 
     apartment = models.ForeignKey(Apartment, on_delete=models.CASCADE, related_name='payments')
     category = models.ForeignKey(PaymentCategory, on_delete=models.SET_NULL, null=True)
@@ -140,15 +145,7 @@ class PaymentTransaction(BaseModel):
     payment_proof = CloudinaryField(null=True, blank=True)
     paid_date = models.DateTimeField(null=True, blank=True)
     transaction_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-
-    STATUS_CHOICES = [
-        ('PENDING', 'Chờ xử lý'),
-        ('COMPLETED', 'Hoàn tất'),
-        ('FAILED', 'Thất bại'),
-        ('REFUNDED', 'Đã hoàn lại'),
-    ]
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES,
-                              default='PENDING')
+    status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
 
     def __str__(self):
         # Định dạng số tiền
@@ -166,17 +163,30 @@ class ParcelLocker(BaseModel):
     resident = models.ForeignKey(Resident, on_delete=models.CASCADE, related_name='locker_items')
 
 class ParcelItem(BaseModel):
+    class PareItemStatus(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        RECEIVED = "RECEIVED", "Received"
+
     locker = models.ForeignKey(ParcelLocker, on_delete=models.CASCADE, related_name='items')
     name = models.CharField(max_length=255)
-    status = models.CharField(max_length=50, choices=[('PENDING', 'Chờ nhận'), ('RECEIVED', 'Đã nhận')], default='PENDING')
+    status = models.CharField(max_length=30, choices=PareItemStatus.choices, default=PareItemStatus.PENDING)
     note = models.TextField(blank=True, null=True)
 
 # Feedback
 class Feedback(BaseModel):
+    class FeedbackStatus(models.TextChoices):
+        NEW = "NEW", "New"
+        PROCESSING = "PROCESSING", "Processing"
+        RESOLVED = "RESOLVED", "Resolved"
+
     resident = models.ForeignKey(Resident, on_delete=models.CASCADE, related_name='feedbacks')
     title = models.CharField(max_length=255)
     content = models.TextField()
-    status = models.CharField(max_length=50, choices=[('NEW', 'Mới'), ('PROCESSING', 'Đang xử lý'), ('RESOLVED', 'Đã xử lý')], default='NEW')
+    status = models.CharField(
+        max_length=20,
+        choices=FeedbackStatus.choices,
+        default=FeedbackStatus.NEW
+    )
 
 # Survey
 class Survey(BaseModel):
@@ -193,13 +203,18 @@ class SurveyResponse(BaseModel):
     option = models.ForeignKey(SurveyOption, on_delete=models.CASCADE)
     resident = models.ForeignKey(Resident, on_delete=models.CASCADE)
 
+class Status(models.TextChoices):
+    NEW = "NEW", "Mới"
+    APPROVED = "APPROVED", "Đồng ý"
+    REJECTED = "REJECTED", "Không đồng ý"
+
 # Visitor Vehicle Registration
 class VisitorVehicleRegistration(BaseModel):
     resident = models.ForeignKey(Resident, on_delete=models.CASCADE)
     visitor_name = models.CharField(max_length=100)
     vehicle_number = models.CharField(max_length=20)
-    registration_date = models.DateField(auto_now_add=True)
-    approved = models.BooleanField(default=False)
+    registration_date = models.DateTimeField(null=True, blank=True)
+    approved = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
 
 #Tiện ích
 class Amenity(BaseModel):
@@ -221,11 +236,7 @@ class AmenityBooking(BaseModel):
     booking_date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
-    status = models.CharField(
-        max_length=20,
-        choices=[('PENDING', 'Chờ xác nhận'), ('APPROVED', 'Đã duyệt'), ('REJECTED', 'Từ chối')],
-        default='PENDING'
-    )
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
     note = models.TextField(blank=True, null=True)
 
     class Meta:

@@ -10,8 +10,8 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getDatabase, ref, get, onValue, push, serverTimestamp } from "firebase/database";
-import { LinearGradient } from "expo-linear-gradient";
 import { TextInput } from "react-native-paper";
+import { endpoints, authApis } from "../../configs/Apis";
 
 const database = getDatabase();
 
@@ -25,6 +25,7 @@ const ChatListScreen = ({ navigation, route }) => {
     const [selectedRoomId, setSelectedRoomId] = useState(null);
 
     const sendMessage = async () => {
+        const now = Date.now();
         if (!newMessage.trim()) return;
 
         if (!selectedRoomId) {
@@ -35,7 +36,7 @@ const ChatListScreen = ({ navigation, route }) => {
         const message = {
             text: newMessage,
             senderId: currentUserId,
-            timestamp: serverTimestamp(),
+            timestamp: now,
         };
 
         try {
@@ -57,36 +58,30 @@ const ChatListScreen = ({ navigation, route }) => {
         }
     };
 
-    // Fetch info admin từ API, cache vào adminsInfo
     const fetchAdminInfo = async (adminId) => {
         if (adminsInfo[adminId]) return adminsInfo[adminId];
         try {
             const token = await AsyncStorage.getItem("token");
-            const response = await fetch(`http://192.168.44.103:8000/users/admins/`, {
-                headers: {
-                Authorization: `Bearer ${token}`,
-                },
-            });
-        if (!response.ok) throw new Error("Lỗi tải thông tin admin");
-        const data = await response.json();
-        // Nếu data là object thì dùng trực tiếp
-        if (data && data.admin_id === adminId) {
-            const adminData = {
-                id: data.admin_id,
-                first_name: data.admin_name, // hoặc tách nếu cần
-                last_name: "", // nếu tên có đủ phần
-                avatarUrl: data.avatar_url || null, // nếu có
-            };
-            console.log(adminData)
-            setAdminsInfo((prev) => ({ ...prev, [adminId]: adminData }));
-            return adminData;
-        } else {
-            console.warn("Không tìm thấy admin với id:", adminId);
-            return null;
-        }
+            const api = authApis(token);
+            const res = await api.get(endpoints.admin);
+            const data = res.data;
+            if (data && data.admin_id === adminId) {
+                const adminData = {
+                    id: data.admin_id,
+                    first_name: data.admin_name,
+                    last_name: "",
+                    avatarUrl: data.avatar_url || null,
+                };
+                console.log(adminData);
+                setAdminsInfo((prev) => ({ ...prev, [adminId]: adminData }));
+                return adminData;
+            } else {
+                console.warn("Không tìm thấy admin với id:", adminId);
+                return null;
+            }
         } catch (err) {
-        console.warn("Lỗi fetch admin info:", err.message);
-        return null;
+            console.warn("Lỗi fetch admin info:", err.message);
+            return null;
         }
     };
 
@@ -118,7 +113,6 @@ const ChatListScreen = ({ navigation, route }) => {
                     (room) => room.residentId === currentUserId && room.adminId === adminId
                 );
 
-                // Lắng nghe toàn bộ messages mỗi lần rooms thay đổi
                 const messagesSnapshot = await get(messagesRef);
                 const allMessages = messagesSnapshot.exists() ? messagesSnapshot.val() : {};
 
@@ -156,7 +150,7 @@ const ChatListScreen = ({ navigation, route }) => {
         });
 
         return () => {
-            unsubscribeRooms(); // Dọn dẹp listener
+            unsubscribeRooms();
         };
     }, [currentUserId, adminId]);
 
@@ -191,39 +185,60 @@ const ChatListScreen = ({ navigation, route }) => {
             return (
                 <TouchableOpacity
                     style={styles.chatCard}
-                    onPress={() => setSelectedRoomId(item.id)} // chọn phòng
+                    onPress={() => setSelectedRoomId(item.id)}
                 >
-                {admin?.avatarUrl ? (
-                    <Image source={{ uri: admin.avatarUrl }} style={styles.avatar} />
-                ) : (
-                    <View style={styles.placeholderAvatar}>
-                    <Text style={styles.placeholderText}>Admin</Text>
+                    {admin?.avatarUrl ? (
+                        <Image source={{ uri: admin.avatarUrl }} style={styles.avatar} />
+                    ) : (
+                        <View style={styles.placeholderAvatar}>
+                            <Text style={styles.placeholderText}>Admin</Text>
+                        </View>
+                    )}
+
+                    <View style={styles.chatInfo}>
+                        <View style={{ maxHeight: 7000 }}>
+                            {item.messages.map((msg, index) => {
+                                const isSender = msg.senderId === currentUserId;
+
+                                let timeString = "";
+                                if (msg.timestamp) {
+                                    let utcDate;
+                                    if (typeof msg.timestamp === "object" && msg.timestamp.seconds) {
+                                        utcDate = new Date(msg.timestamp.seconds * 1000);
+                                    } else {
+                                        utcDate = new Date(msg.timestamp);
+                                    }
+
+                                    const vietnamDate = new Date(utcDate.getTime());
+                                    timeString = vietnamDate.toLocaleString("vi-VN", {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        hour12: false
+                                    });
+                                }
+
+                                return (
+                                    <View
+                                        key={index}
+                                        style={isSender ? styles.messageBubbleSender : styles.messageBubbleReceiver}
+                                    >
+                                        <Text style={isSender ? styles.messageTextSender : styles.messageTextReceiver}>
+                                            {msg.text}
+                                        </Text>
+                                        {timeString ? (
+                                            <Text style={styles.timestamp}>{timeString}</Text>
+                                        ) : null}
+                                    </View>
+                                );
+                            })}
+                        </View>
                     </View>
-                )}
-
-                <View style={styles.chatInfo}>
-
-                    {/* Hiển thị toàn bộ tin nhắn */}
-                    <View style={{ maxHeight: 5000 }}>
-                    {item.messages.map((msg, index) => {
-                        const isSender = msg.senderId === currentUserId;
-                        return (
-                            <View
-                            key={index}
-                            style={isSender ? styles.messageBubbleSender : styles.messageBubbleReceiver}
-                            >
-                            <Text style={isSender ? styles.messageTextSender : styles.messageTextReceiver}>
-                                {msg.text}
-                            </Text>
-                            </View>
-                        );
-                    })}
-                    </View>
-
-                </View>
                 </TouchableOpacity>
             );
-    };
+        };
 
 
     return (
@@ -313,7 +328,7 @@ const ChatListScreen = ({ navigation, route }) => {
             shadowOpacity: 0.1,
             shadowRadius: 4,
             alignItems: "flex-start", 
-            height: 400,
+            height: 800,
         },
         avatar: {
             width: 64,
@@ -374,7 +389,7 @@ const ChatListScreen = ({ navigation, route }) => {
         },
         timestamp: {
             fontSize: 12,
-            color: "#888",
+            color: "#000",
             marginTop: 6,
         },
 });

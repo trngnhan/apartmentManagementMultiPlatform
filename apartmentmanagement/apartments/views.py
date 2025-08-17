@@ -39,9 +39,10 @@ from .pagination import Pagination
 from .models import (
     Resident, Apartment, ApartmentTransferHistory, PaymentCategory,
     PaymentTransaction, ParcelLocker, ParcelItem,
-    Feedback, Survey, SurveyOption, SurveyResponse, VisitorVehicleRegistration
+    Feedback, Survey, SurveyOption, SurveyResponse, VisitorVehicleRegistration, AmenityBooking, Amenity
 )
-from .serializers import PaymentCategorySerializer, PaymentTransactionSerializer
+from .serializers import PaymentCategorySerializer, PaymentTransactionSerializer, AmenityBookingSerializer, \
+    AmenitySerializer
 
 from apartments.serializers import (
     UserSerializer, ResidentSerializer, ApartmentSerializer,
@@ -673,14 +674,14 @@ def momo_ipn(request):
         return response.json()
 
 # Parcel Locker ViewSet
-class ParcelLockerViewSet(viewsets.ViewSet, generics.ListCreateAPIView, APIView):
+class ParcelLockerViewSet(viewsets.ViewSet, generics.ListCreateAPIView, generics.DestroyAPIView):
     queryset = ParcelLocker.objects.filter(active=True)
     serializer_class = ParcelLockerSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['resident', 'active']
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update']:
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAdminRole()]
         if self.action in ['add-item', 'update-item-status', 'list', 'retrieve']:
             return [IsAdminOrManagement()]
@@ -794,7 +795,7 @@ class ParcelLockerViewSet(viewsets.ViewSet, generics.ListCreateAPIView, APIView)
 
 
 # Feedback ViewSet
-class FeedbackViewSet(viewsets.ViewSet, generics.ListAPIView):
+class FeedbackViewSet(viewsets.ViewSet, generics.ListAPIView, generics.DestroyAPIView):
     queryset = Feedback.objects.filter(active=True)
     serializer_class = FeedbackSerializer
     pagination_class = Pagination
@@ -806,9 +807,7 @@ class FeedbackViewSet(viewsets.ViewSet, generics.ListAPIView):
     def get_permissions(self):
         if self.action == 'create':
             return [permissions.IsAuthenticated()]  # Cư dân gửi phản ánh
-        elif self.action in ['destroy']:
-            return [IsAdminRole]  # Chỉ admin mới được xóa
-        elif self.action in ['update', 'partial_update', 'list', 'update-status']:
+        elif self.action in ['update', 'partial_update', 'list', 'update-status', 'destroy']:
             return [IsAdminOrManagement()]  # Admin + Management được sửa, xem tất cả
         return [permissions.IsAuthenticated()]  # Mặc định các quyền khác
 
@@ -1041,7 +1040,7 @@ class SurveyResponseViewSet(viewsets.ViewSet, generics.ListAPIView):
 
 
 # Visitor Vehicle Registration ViewSet
-class VisitorVehicleRegistrationViewSet(viewsets.ViewSet, generics.ListAPIView):
+class VisitorVehicleRegistrationViewSet(viewsets.ViewSet, generics.ListAPIView, generics.DestroyAPIView):
     queryset = VisitorVehicleRegistration.objects.filter(active=True)
     serializer_class = VisitorVehicleRegistrationSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -1109,4 +1108,54 @@ class VisitorVehicleRegistrationViewSet(viewsets.ViewSet, generics.ListAPIView):
         #Trả về danh sách đăng ký xe của người dùng hiện tại
         registrations = VisitorVehicleRegistration.objects.filter(resident__user=request.user)
         serializer = self.get_serializer(registrations, many=True)
+        return Response(serializer.data)
+
+class AdminAmenityViewSet(viewsets.ViewSet, generics.ListCreateAPIView, generics.DestroyAPIView, generics.UpdateAPIView):
+    queryset = Amenity.objects.all()
+    serializer_class = AmenitySerializer
+
+    def get_permissions(self):
+        admin_actions = ['create', 'update', 'partial_update', 'destroy']
+        if self.action in admin_actions:
+            return [permissions.IsAdminUser()]
+        # Các action xem/list, cư dân và admin đều được phép
+        elif self.action in ['list', 'retrieve']:
+            return [permissions.IsAuthenticated()]
+        return [permissions.IsAuthenticated()]
+
+
+class AdminAmenityBookingListViewSet(viewsets.ViewSet, generics.ListAPIView):
+    queryset = AmenityBooking.objects.select_related('amenity', 'resident', 'resident__user').all()
+    serializer_class = AmenityBookingSerializer
+
+    def get_permissions(self):
+        admin_actions = ['create', 'update', 'partial_update', 'destroy', 'set-status']
+        if self.action in admin_actions:
+            return [permissions.IsAdminUser()]
+        # Các action xem/list, cư dân và admin đều được phép
+        elif self.action in ['list', 'retrieve']:
+            return [permissions.IsAuthenticated()]
+        return [permissions.IsAuthenticated()]
+
+    @action(methods=['patch'], detail=True, url_path='set-status')
+    def set_status(self, request, pk=None):
+        booking = self.get_object()
+
+        # Kiểm tra quyền
+        if not request.user.is_staff and getattr(request.user, 'role', '') != 'MANAGEMENT':
+            return Response(
+                {"detail": "Bạn không có quyền thực hiện hành động này."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        status_value = request.data.get("status", None)
+        if status_value is None:
+            return Response(
+                {"detail": "Thiếu trường status."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        booking.status = status_value
+        booking.save()
+        serializer = self.get_serializer(booking)
         return Response(serializer.data)

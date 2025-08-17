@@ -15,39 +15,30 @@ import { LinearGradient } from "expo-linear-gradient";
 import MyStyles from "../../styles/MyStyles";
 import { Modal } from "react-native-paper";
 import { Picker } from "@react-native-picker/picker";
+import { endpoints, authApis } from "../../configs/Apis";
 
 const AdminResident = () => {
-    const [residents, setResidents] = useState([]); // Danh sách cư dân
-    const [loading, setLoading] = useState(true); // Trạng thái tải dữ liệu
-    const [searchText, setSearchText] = useState(""); // Văn bản tìm kiếm
-    const [unregisteredUsers, setUnregisteredUsers] = useState([]); // Danh sách user chưa đăng ký
-    const [modalVisible, setModalVisible] = useState(false); // Trạng thái hiển thị modal
+    const [residents, setResidents] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchText, setSearchText] = useState("");
+    const [unregisteredUsers, setUnregisteredUsers] = useState([]);
+    const [modalVisible, setModalVisible] = useState(false);
     const [newResident, setNewResident] = useState({
         first_name: "",
         last_name: "",
         email: "",
-    }); // Thông tin cư dân mới
+    });
 
-    // Hàm gọi API để lấy danh sách cư dân
     const fetchResidents = async (search = "") => {
         try {
             const token = await AsyncStorage.getItem("token");
-            // const url = `http://192.168.44.101:8000/residents/?search=${search}`;
-            const url = `http://192.168.44.103:8000/residents/?search=${search}`;
-            const response = await fetch(url, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                console.log("Phản hồi từ API:", data);
-                const filteredResidents = data.filter(item => item.user.role === 'RESIDENT');
-                setResidents(filteredResidents); // Sử dụng `results` nếu có, nếu không thì dùng toàn bộ `data`
+            const api = authApis(token);
+            const res = await api.get(`${endpoints.residents}?search=${search}`);
+            if (res.status === 200) {
+                const filteredResidents = res.data.filter(item => item.user.role === 'RESIDENT');
+                setResidents(filteredResidents);
             } else {
-                console.error("Lỗi khi lấy danh sách cư dân:", response.status);
+                console.error("Lỗi khi lấy danh sách cư dân:", res.status);
             }
         } catch (error) {
             console.error("Lỗi khi gọi API cư dân:", error);
@@ -63,62 +54,38 @@ const AdminResident = () => {
                 Alert.alert("Lỗi", "Vui lòng chọn một cư dân trước khi thêm.");
                 return;
             }
-
             const token = await AsyncStorage.getItem("token");
-            // const url = `http://192.168.44.101:8000/residents/`;
-            const url = `http://192.168.44.103:8000/residents/`;
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ user_id: newResident.user_id }), // Gửi user_id thay vì email
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                console.log("Cư dân mới đã được thêm:", data);
-                setResidents((prevResidents) => [data, ...prevResidents]); // Cập nhật danh sách cư dân
-                setModalVisible(false); // Đóng modal
-                setNewResident({ first_name: "", last_name: "", email: "", user_id: "" }); // Reset form
+            const api = authApis(token);
+            const res = await api.post(endpoints.residents, { user_id: newResident.user_id });
+            if (res.status === 201 || res.status === 200) {
+                const data = res.data;
+                setResidents((prevResidents) => [data, ...prevResidents]);
+                setModalVisible(false);
+                setNewResident({ first_name: "", last_name: "", email: "", user_id: "" });
                 Alert.alert("Thành công", "Cư dân mới đã được thêm.");
             } else {
-                const errorData = await response.json();
-                console.error("Chi tiết lỗi từ API:", errorData);
-                Alert.alert("Lỗi", `Không thể thêm cư dân: ${errorData.detail || "Dữ liệu không hợp lệ"}`);
+                Alert.alert("Lỗi", `Không thể thêm cư dân: ${res.data.detail || "Dữ liệu không hợp lệ"}`);
             }
         } catch (error) {
-            console.error("Lỗi khi gọi API thêm cư dân:", error);
             Alert.alert("Lỗi", "Đã xảy ra lỗi khi thêm cư dân.");
         }
     };
 
     const fetchUnregisteredUsers = async () => {
-    try {
-        const token = await AsyncStorage.getItem("token");
-        // const url = `http://192.168.44.101:8000/users/unregistered-users/`;
-        const url = `http://192.168.44.103:8000/users/unregistered-users/`;
-        const response = await fetch(url, {
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            console.log("Danh sách user chưa đăng ký:", data);
-            setUnregisteredUsers(data); // Lưu danh sách user chưa đăng ký
-        } else {
-            console.error("Lỗi khi lấy danh sách user chưa đăng ký:", response.status);
+        try {
+            const token = await AsyncStorage.getItem("token");
+            const api = authApis(token);
+            const res = await api.get(endpoints.unregisteredUsers);
+            if (res.status === 200) {
+                setUnregisteredUsers(res.data);
+            } else {
+                console.error("Lỗi khi lấy danh sách user chưa đăng ký:", res.status);
+            }
+        } catch (error) {
+            console.error("Lỗi khi gọi API user chưa đăng ký:", error);
         }
-    } catch (error) {
-        console.error("Lỗi khi gọi API user chưa đăng ký:", error);
-    }
-};
+    };
 
-    // Gọi API khi component được render lần đầu
     useEffect(() => {
         fetchResidents();
         if (modalVisible) {
@@ -126,20 +93,18 @@ const AdminResident = () => {
         }
     }, [modalVisible]);
 
-    // Hàm xử lý tìm kiếm
     const handleSearch = (text) => {
         setSearchText(text);
-        fetchResidents(text); // Gọi API với từ khóa tìm kiếm
+        fetchResidents(text);
     };
 
-    // Hàm render từng mục trong danh sách
     const renderItem = ({ item }) => {
         return (
             <View style={MyStyles.card}>
                 {/* Hiển thị ảnh đại diện nếu có */}
-                {item.image || item.user?.profile_picture ? (
+                {item.user?.profile_picture ? (
                     <Image
-                        source={{ uri: item.image || item.user?.profile_picture }}
+                        source={{ uri: item.user?.profile_picture }}
                         style={styles.avatar}
                     />
                 ) : (
@@ -157,8 +122,8 @@ const AdminResident = () => {
 
     return (
         <LinearGradient
-            colors={['#fff', '#d7d2cc', '#FFBAC3']} // Màu gradient
-            style={{ flex: 1 }} // Đảm bảo gradient bao phủ toàn màn hình
+            colors={['#fff', '#d7d2cc', '#FFBAC3']}
+            style={{ flex: 1 }}
         >
             <View style={MyStyles.containerr}>
                 <Text style={MyStyles.header}>Quản lý Cư dân</Text>
@@ -171,7 +136,7 @@ const AdminResident = () => {
 
                 <TouchableOpacity
                     onPress={() => {
-                        setModalVisible(true); // Hiển thị Modal
+                        setModalVisible(true);
                     }}
                     style={[MyStyles.button, { backgroundColor: "#FFCC33", marginBottom: 10 }]}
                 >
@@ -219,7 +184,7 @@ const AdminResident = () => {
                                     <Picker.Item
                                         key={user.id}
                                         label={`${user.first_name} ${user.last_name} (${user.email})`}
-                                        value={user.id} // Sử dụng user.id làm giá trị
+                                        value={user.id}
                                     />
                                 ))}
                             </Picker>
@@ -250,10 +215,10 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "rgba(0, 0, 0, 0.5)", // Làm mờ nền phía sau modal
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
     },
     modalContent: {
-        width: "90%", // Chiếm 90% chiều rộng màn hình
+        width: "90%",
         backgroundColor: "#fff",
         borderRadius: 10,
         padding: 20,
@@ -287,6 +252,26 @@ const styles = StyleSheet.create({
         marginHorizontal: 5,
     },
     modalButtonText: {
+        color: "#fff",
+        fontWeight: "bold",
+    },
+    avatar: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        marginRight: 15,
+        backgroundColor: "#eee",
+    },
+    placeholderAvatar: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: "#ccc",
+        justifyContent: "center",
+        alignItems: "center",
+        marginRight: 15,
+    },
+    placeholderText: {
         color: "#fff",
         fontWeight: "bold",
     },

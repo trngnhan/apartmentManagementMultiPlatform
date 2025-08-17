@@ -4,43 +4,35 @@ import { ActivityIndicator, Avatar, Card } from "react-native-paper";
 import MyStyles from "../../styles/MyStyles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import ChatServices from "../../firebase/ChatServices";
+import { chatServices } from "../../firebase/ChatServices";
+import { endpoints, authApis } from "../../configs/Apis";
+import { Image } from "react-native-svg";
 
 const AdminChatScreen = ({ navigation, route }) => {
-const { user, token } = route.params; // token nếu cần dùng cho API bảo mật
+const { user, token } = route.params;
 const [residents, setResidents] = useState([]);
 const [loading, setLoading] = useState(true);
 const [error, setError] = useState(null);
 
 useEffect(() => {
     const loadResidents = async () => {
+        try {
+            setLoading(true);
+            setError(null);
 
-    try {
-        setLoading(true);
-        setError(null);
-
-        const token = await AsyncStorage.getItem("token");
-            const url = `http://192.168.44.103:8000/residents/`;
-            const response = await fetch(url, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                console.log("Phản hồi từ API:", data);
-                const filteredResidents = data.filter(item => item.user.role === 'RESIDENT');
-                setResidents(filteredResidents);
-                setLoading(false)
-            } else {
-                console.error("Lỗi khi lấy danh sách cư dân:", response.status);
-            }
-    } catch (err) {
-        setError("Không thể tải danh sách cư dân: " + err.message);
-        setLoading(false);
-    }
+            const token = await AsyncStorage.getItem("token");
+            const api = authApis(token);
+            const response = await api.get(endpoints.residents || "/residents/");
+            const data = response.data;
+            // Nếu API trả về phân trang
+            const residentsArr = Array.isArray(data) ? data : data.results || [];
+            const filteredResidents = residentsArr.filter(item => item.user.role === 'RESIDENT');
+            setResidents(filteredResidents);
+            setLoading(false);
+        } catch (err) {
+            setError("Không thể tải danh sách cư dân: " + err.message);
+            setLoading(false);
+        }
     };
 
     loadResidents();
@@ -51,15 +43,15 @@ const navigateToChatWithResident = async (resident) => {
         const userObj = typeof user === 'string' ? JSON.parse(user) : user;
         console.log("Đã gọi navigateToChatWithResident", resident);
 
-        if (!userObj || !userObj.id) {
-            alert("Không xác định được Admin hiện tại.");
-            return;
-        }
+        // if (!userObj || !userObj.id) {
+        //     alert("Không xác định được Admin hiện tại.");
+        //     return;
+        // }
 
-        const roomId = await ChatServices.createOrGetChatRoom(userObj.id, resident.id);
+        const roomId = await chatServices.createOrGetChatRoom(userObj.id, resident.id);
         console.log("Phòng chat đã tạo hoặc lấy:", roomId);
 
-        const chatRoomDetails = await ChatServices.getChatRoomDetails(roomId);
+        const chatRoomDetails = await chatServices.getChatRoomDetails(roomId);
         console.log("Chi tiết phòng chat:", chatRoomDetails);
         navigation.navigate("AdminChat", {
             roomId,
@@ -111,24 +103,10 @@ const renderItem = ({ item }) => {
             style={MyStyles.card}
             onPress={() => navigateToChatWithResident(item)}
         >
-        {/* Hiển thị avatar nếu có, nếu không thì hiển thị khung placeholder */}
-        {item.profile_picture ? (
-            <Image
-                source={{ uri: item.user.profile_picture }}
-                style={styles.avatar}
-            />
-        ) : (
-            <View style={styles.placeholderAvatar}>
-                <Text style={styles.placeholderText}>Ảnh</Text>
-            </View>
-        )}
-
-            <Text style={MyStyles.name}>
-                Tên: {item.user.first_name || ""} {item.user.last_name || ""}
-            </Text>
-            <Text>Email: {item.user.email || "Không có"}</Text>
-            <Text>Vai trò: {item.user.role || "Không xác định"}</Text>
-            <Text>Trạng thái: {item.user.active ? "Hoạt động" : "Đã khoá"}</Text>
+        <Text style={MyStyles.name}>Tên: {item.user?.first_name} {item.user?.last_name}</Text>
+        <Text>Email: {item.user?.email || "Không có"}</Text>
+        <Text>Vai trò: {item.user?.role || "Không xác định"}</Text>
+        <Text>Trạng thái: {item.user?.active ? "Hoạt động" : "Đã khoá"}</Text>
         </TouchableOpacity>
     );
 };
@@ -151,10 +129,10 @@ return (
 
 const styles = StyleSheet.create({
     avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#ccc",
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: "#ccc",
     },
 
     placeholderAvatar: {

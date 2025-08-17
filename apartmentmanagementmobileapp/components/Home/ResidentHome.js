@@ -5,30 +5,32 @@ import { useNavigation } from "@react-navigation/native";
 import { Card, Title, Paragraph } from "react-native-paper";
 import MyStyles from "../../styles/MyStyles";
 import { LinearGradient } from "expo-linear-gradient";
+import { endpoints, authApis } from "../../configs/Apis";
+import { useFocusEffect } from "@react-navigation/native";
 
 const ResidentHome = () => {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true); // State hiển thị trạng thái loading
-    const [apartments, setApartments] = useState([]); // State lưu căn hộ
-    const [registrations, setRegistrations] = useState([]); // State lưu đăng ký giữ xe
-    const [lockerItems, setLockerItems] = useState([]); // State lưu danh sách món hàng trong tủ đồ
+    const [loading, setLoading] = useState(true);
+    const [apartments, setApartments] = useState([]); 
+    const [registrations, setRegistrations] = useState([]);
+    const [lockerItems, setLockerItems] = useState([]); 
     const [token, setToken] = useState(null);
     const [currentUserId, setCurrentUserId] = useState(null);
+    const [lockerId, setLockerId] = useState(null);
     const [adminId, setAdminId] = useState(null);
     const nav = useNavigation();
 
     const getAdminIdForResident = async (residentId) => {
         const token = await AsyncStorage.getItem("token");
         try {
-            const response = await fetch(`http://192.168.44.103:8000/users/admins/`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
+            const api = authApis(token);
+            const res = await api.get(endpoints.admin);
+            if (res.status === 200) {
+                const data = res.data;
                 console.log("Data admin API:", data);
-                return data.admin_id;  // sửa đây, lấy đúng trường admin_id
+                return data.admin_id;
             } else {
-                console.error("Lỗi response admin:", response.status);
+                console.error("Lỗi response admin:", res.status);
                 return null;
             }
         } catch (error) {
@@ -44,7 +46,7 @@ const ResidentHome = () => {
             return;
         }
         const adminId = await getAdminIdForResident(currentUserId);
-        console.log("Admin ID:", adminId); // Kiểm tra adminId
+        console.log("Admin ID:", adminId);
         if (!adminId) {
             alert("Chưa xác định được Admin");
             return;
@@ -52,96 +54,77 @@ const ResidentHome = () => {
         nav.navigate("ChatListScreen", { currentUserId, adminId });
     };
 
-    useEffect(() => {
+    const goLockerItems = async () => {
+        if (!currentUserId) {
+            alert("Chưa đăng nhập hoặc chưa lấy được residentId");
+            return;
+        }
+        const adminId = await getAdminIdForResident(currentUserId);
+        console.log("Admin ID:", adminId);
+        console.log("Current User ID:", currentUserId);
+        console.log("Locker Items:", lockerId);
+        if (!adminId) {
+            alert("Chưa xác định được Admin");
+            return;
+        }
+        nav.navigate("LockerItems", { currentUserId, adminId });
+    };
+
+    useFocusEffect(
+    React.useCallback(() => {
         const checkToken = async () => {
             const token = await AsyncStorage.getItem("token");
-            console.log("Token: ", token); // Kiểm tra token
             setToken(token);
 
             if (!token) {
-                console.log("No token, redirecting to Login");
                 nav.navigate("Login");
             } else {
                 const userData = await AsyncStorage.getItem("user");
-                console.log("User data: ", userData); // Kiểm tra dữ liệu người dùng
-
                 if (userData) {
                     try {
                         const parsedUser = JSON.parse(userData);
-                        console.log("Parsed User:", parsedUser); // Kiểm tra người dùng sau khi parse
                         setCurrentUserId(parsedUser.resident_id);
-
                         setUser(parsedUser);
-                        //---
-                        // Hàm lấy API căn hộ
+                        setLockerId(parsedUser.locker_id);
+
                         const fetchApartments = async (token) => {
                             try {
-                                const response = await fetch(
-                                    // "http://192.168.44.101:8000/apartments/get-apartment/",
-                                    "http://192.168.44.103:8000/apartments/get-apartment/",
-                                    {
-                                        headers: {
-                                            Authorization: `Bearer ${token}`,
-                                        },
-                                    }
-                                );
-
-                                if (response.ok) {
-                                    const data = await response.json();
-                                    setApartments(data.results || data); // Nếu dùng pagination
-                                } else {
-                                    console.error(
-                                        "Lỗi khi lấy thông tin căn hộ:",
-                                        response.status
-                                    );
+                                const api = authApis(token);
+                                const res = await api.get(endpoints.getApartment);
+                                if (res.status === 200) {
+                                    setApartments(res.data.results || res.data);
                                 }
                             } catch (error) {
                                 console.error("Lỗi khi gọi API căn hộ:", error);
                             }
                         };
 
-                        // Gọi API lấy danh sách đăng ký giữ xe
-                        const fetchRegistrations = async () => {
+                        const fetchRegistrations = async (token) => {
                             try {
-                                const response = await fetch(
-                                    //   "http://192.168.44.101:8000/visitorvehicleregistrations/my-registrations/",
-                                    "http://192.168.44.103:8000/visitorvehicleregistrations/my-registrations/",
-                                    {
-                                        headers: {
-                                            Authorization: `Bearer ${token}`,
-                                        },
-                                    }
-                                );
-                        
-                                if (response.ok) {
-                                    const data = await response.json();
-                                    console.log("Dữ liệu trả về từ API:", data); // Log dữ liệu trả về
-                                    setRegistrations(data); // Lưu danh sách đăng ký giữ xe vào state
-                                } else {
-                                    console.error("Lỗi khi lấy danh sách đăng ký giữ xe:", response.status);
+                                const api = authApis(token);
+                                const res = await api.get(endpoints.myVehicleRegistrations);
+                                if (res.status === 200) {
+                                    setRegistrations(res.data);
                                 }
-                                } catch (error) {
-                                    console.error("Lỗi khi gọi API đăng ký giữ xe:", error);
-                                }
+                            } catch (error) {
+                                console.error("Lỗi khi gọi API đăng ký giữ xe:", error);
+                            }
                         };
 
-                        // GỌI API ở đây!
                         await fetchApartments(token);
-                        await fetchRegistrations();
-                        //---
+                        await fetchRegistrations(token);
                     } catch (error) {
-                        console.error("Error parsing user data:", error);
                         nav.navigate("Login");
                     }
                 } else {
-                    console.log("No user data, redirecting to Login");
                     nav.navigate("Login");
                 }
             }
         };
 
         checkToken();
-    }, [nav]);
+    }, [nav])
+);
 
     const logout = async () => {
         await AsyncStorage.removeItem("token");
@@ -154,41 +137,41 @@ const ResidentHome = () => {
     };
 
     if (!user) {
-        return <Text>Loading...</Text>; // Hoặc có thể thêm Spinner tại đây
+        return <Text>Loading...</Text>;
     }
 
     return (
-      <LinearGradient
-      colors={['#fff', '#d7d2cc', '#FFBAC3']} // Màu gradient
-      style={{ flex: 1 }} // Đảm bảo gradient bao phủ toàn màn hình
-      >
-          <ScrollView contentContainerStyle={{ padding: 16 }}>
-              <Text style={[MyStyles.text, MyStyles.padding]}>
-                  Welcome, {user.first_name} {user.last_name}
-              </Text>
-              <Text style={MyStyles.padding}>Căn hộ của bạn:</Text>
-              {apartments.length === 0 ? (
-                  <Text>Bạn chưa sở hữu căn hộ nào.</Text>
-              ) : (
-                  apartments.map((apartment, index) => (
-                      <Card key={index} style={{ marginBottom: 12 }}>
-                          <Card.Content>
-                              <Title style={MyStyles.text}>Căn hộ: {apartment.code}</Title>
-                              <Paragraph>Tòa: {apartment.building}</Paragraph>
-                              <Paragraph>Tầng: {apartment.floor}</Paragraph>
-                              <Paragraph>Căn số: {apartment.number}</Paragraph>
-                          </Card.Content>
-                      </Card>
-                  ))
-              )}
+    <LinearGradient
+    colors={['#fff', '#d7d2cc', '#FFBAC3']} 
+    style={{ flex: 1 }}
+    >
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
+            <Text style={[MyStyles.text, MyStyles.padding]}>
+                Welcome, {user.first_name} {user.last_name}
+            </Text>
+            <Text style={MyStyles.padding}>Căn hộ của bạn:</Text>
+            {apartments.length === 0 ? (
+                <Text>Bạn chưa sở hữu căn hộ nào.</Text>
+            ) : (
+                apartments.map((apartment, index) => (
+                    <Card key={index} style={{ marginBottom: 12 }}>
+                        <Card.Content>
+                            <Title style={MyStyles.text}>Căn hộ: {apartment.code}</Title>
+                            <Paragraph>Tòa: {apartment.building}</Paragraph>
+                            <Paragraph>Tầng: {apartment.floor}</Paragraph>
+                            <Paragraph>Căn số: {apartment.number}</Paragraph>
+                        </Card.Content>
+                    </Card>
+                ))
+            )}
 
-              {/* Các chức năng chuyển trang để ở đây */}
-              <View style={{ flexDirection: "row", justifyContent: "space-around", marginVertical: 10 }}>
+            {/* Các chức năng chuyển trang để ở đây */}
+            <View style={{ flexDirection: "row", justifyContent: "space-around", marginVertical: 10 }}>
                 {/* Hình ảnh để chuyển đến trang RegisterVehicle */}
                 <TouchableOpacity onPress={() => nav.navigate("RegisterVehicle")}>
                     <View style={{ alignItems: "flex-start" }}>
                         <Image
-                            source={require("../../assets/register_vehicle.png")} // Đường dẫn đến hình ảnh
+                            source={require("../../assets/register_vehicle.png")}
                             style={MyStyles.image}
                         />
                         <Text style={[MyStyles.padding, MyStyles.textSmall]}>Đăng ký xe cho người thân</Text>
@@ -196,16 +179,16 @@ const ResidentHome = () => {
                 </TouchableOpacity>
 
                 {/* Hình ảnh để chuyển đến trang LockerItems*/}
-                <TouchableOpacity onPress={() => nav.navigate("LockerItems")}>
+                <TouchableOpacity onPress={() => goLockerItems()}>
                     <View style={{ alignItems: "center" }}>
                         <Image
-                            source={require("../../assets/locker_items.png")} // Đường dẫn đến hình ảnh
+                            source={require("../../assets/locker_items.png")}
                             style={MyStyles.image}
                         />
                         <Text style={[MyStyles.padding, MyStyles.textSmall]}>Tủ đồ</Text>
                     </View>
                 </TouchableOpacity>
-              
+            
                 {/* Hình ảnh để chuyển đến trang SubmitFeedback*/}
                 <TouchableOpacity onPress={() => nav.navigate("SubmitFeedback")}>
                     <View style={{ alignItems: "flex-end" }}>
@@ -217,9 +200,9 @@ const ResidentHome = () => {
                     </View>
                 </TouchableOpacity>
 
-              </View>
+            </View>
 
-              <View style={{ flexDirection: "row", justifyContent: "space-around", marginVertical: 10 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-around", marginVertical: 10 }}>
                 {/* Hình ảnh để chuyển đến trang SurveyList */}
                 <TouchableOpacity onPress={() => nav.navigate("SurveyList")}>
                     <View style={{ alignItems: "center" }}>
@@ -242,10 +225,20 @@ const ResidentHome = () => {
                     </View>
                 </TouchableOpacity>
 
-              </View>
+                {/* Hình ảnh để chuyển đến trang PaymentScreen */}
+                <TouchableOpacity onPress={() => nav.navigate("PaymentScreen")}>
+                    <View style={{ alignItems: "center" }}>
+                        <Image
+                            source={require("../../assets/payment.png")}
+                            style={MyStyles.image}
+                        />
+                        <Text style={[MyStyles.padding, MyStyles.textSmall]}>Thanh toán phí chung cư</Text>
+                    </View>
+                </TouchableOpacity>
+            </View>
 
-              {/* Hiển thị danh sách đăng ký giữ xe */}
-              <Text style={MyStyles.sectionTitle}>Danh sách đăng ký giữ xe:</Text>
+            {/* Hiển thị danh sách đăng ký giữ xe */}
+            <Text style={MyStyles.sectionTitle}>Danh sách đăng ký giữ xe:</Text>
                 {registrations.length === 0 ? (
                     <Text style={MyStyles.padding}>Bạn chưa có đăng ký giữ xe nào.</Text>
                 ) : (
@@ -256,31 +249,32 @@ const ResidentHome = () => {
                                 <Paragraph>Biển số xe: {registration.vehicle_number}</Paragraph>
                                 <Paragraph>Ngày đăng ký: {registration.registration_date}</Paragraph>
                                 <Paragraph>
-                                    Trạng thái: {registration.approved ? "Đã duyệt" : "Chưa duyệt"}
+                                    Trạng thái: 
+                                    {registration.approved === "NEW" ? " Mới" : registration.approved === "APPROVED" ? " Đồng ý" : "Không đồng ý"}
                                 </Paragraph>
                             </Card.Content>
                         </Card>
                     ))
                 )}
                 
-              <Button
-              style={{
-                backgroundColor: "#FF6F61", // Màu nền nút
-                borderRadius: 15, // Bo góc
-                paddingVertical: 2, // Khoảng cách trên dưới
+            <Button
+            style={{
+                backgroundColor: "#FF6F61",
+                borderRadius: 15, 
+                paddingVertical: 2,
                 width: 350,
-                alignSelf: "center", // Căn giữa
-                elevation: 5, // Đổ bóng
-                marginTop: 20, // Khoảng cách phía trên
-              }}
-              labelStyle={{
-                  color: "white", // Màu chữ
-                  fontSize: 16, // Kích thước chữ
-                  fontWeight: "bold", // Đậm chữ
-              }}
-              title="Logout" onPress={logout} />
-          </ScrollView>
-      </LinearGradient>
+                alignSelf: "center",
+                elevation: 5, 
+                marginTop: 20,
+            }}
+            labelStyle={{
+                color: "white", 
+                fontSize: 16,
+                fontWeight: "bold",
+            }}
+            title="Logout" onPress={logout} />
+        </ScrollView>
+    </LinearGradient>
     );
 };
 

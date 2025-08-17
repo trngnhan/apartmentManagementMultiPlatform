@@ -3,7 +3,8 @@ from django.urls import path
 
 from apartments.models import (User, Resident, Apartment, ApartmentTransferHistory,\
     PaymentCategory, PaymentTransaction, ParcelLocker, ParcelItem,Feedback,
-                               Survey, SurveyOption, SurveyResponse, VisitorVehicleRegistration)
+                               Survey, SurveyOption, SurveyResponse, VisitorVehicleRegistration,
+                               Amenity, AmenityBooking)
 
 class MyAdminSite(admin.AdminSite):
     site_header = 'APARTMENT MANAGEMENT'
@@ -22,3 +23,5 @@ admin_site.register(Survey)
 admin_site.register(SurveyOption)
 admin_site.register(SurveyResponse)
 admin_site.register(VisitorVehicleRegistration)
+admin_site.register(Amenity)
+admin_site.register(AmenityBooking)

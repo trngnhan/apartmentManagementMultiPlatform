@@ -8,6 +8,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BarChart } from "react-native-chart-kit";
 import { Dimensions } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
+import { endpoints, authApis } from "../../configs/Apis";
+import axios from "axios";
 
 const AdminHome = () => {
     const nav = useNavigation(); // Điều hướng
@@ -16,38 +18,65 @@ const AdminHome = () => {
     const [surveys, setSurveys] = useState([]);
     const [surveyChartData, setSurveyChartData] = useState([]);
 
-
     // Hàm điều hướng
     const navigateToAdminUser = () => {
-        nav.navigate("AdminUser"); // Điều hướng đến trang AdminUser
+        nav.navigate("AdminUser");
     };
 
     const navigateToAdminResident = () => {
-        nav.navigate("AdminResident"); // Điều hướng đến trang AdminResident
+        nav.navigate("AdminResident");
     };
 
     const navigateToAdminApartment = () => {
-        nav.navigate("AdminApartment"); // Điều hướng đến trang AdminApartment
+        nav.navigate("AdminApartment");
     };
 
     const navigateToAdminApartmentTransferHistorys = () => {
-        nav.navigate("AdminApartmentTransferHistorys"); // Điều hướng đến trang AdminApartmentTransferHistorys
+        nav.navigate("AdminApartmentTransferHistorys");
     };
 
     const navigateToAdminSurvey = () => {
-        nav.navigate("AdminSurvey"); // Điều hướng đến trang AdminSurvey
+        nav.navigate("AdminSurvey");
     };
 
     const navigateToAdminFeedback = () => {
-        nav.navigate("AdminFeedback"); // Điều hướng đến trang AdminFeedback
+        nav.navigate("AdminFeedback");
     };
 
-    const navigateToAdminLocker = () => {
-        nav.navigate("AdminLocker"); // Điều hướng đến trang AdminLocker
+    const navigateToAdminAmenity = () => {
+        nav.navigate("AdminAmenity");
+    };
+
+    const navigateToAdminLocker = async () => {
+        const userStr = await AsyncStorage.getItem("user");
+        let adminId = null;
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                adminId = user.id;
+            } catch (e) {
+                console.error("Lỗi parse user:", e);
+            }
+        }
+        nav.navigate("AdminLocker", { adminId });
     };
 
     const navigateToAdminPayment = () => {
-        nav.navigate("AdminPayment"); // Điều hướng đến trang AdminPayment
+        nav.navigate("AdminPayment");
+    };
+
+    const navigateToAdminParkingRegistrations = async () => {
+        const userStr = await AsyncStorage.getItem("user");
+        let adminId = null;
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                adminId = user.id;
+            } catch (e) {
+                console.error("Lỗi parse user:", e);
+            }
+        }
+        nav.navigate("AdminParkingRegistrations", { adminId });
     };
 
     const navigateToAdminChatScreen = async () => {
@@ -57,52 +86,37 @@ const AdminHome = () => {
         nav.navigate("AdminChatScreen", { token, user });
     };
     
-    // Hàm gọi API
     const fetchSurveys = async () => {
         try {
             const token = await AsyncStorage.getItem("token");
-            const response = await fetch("http://192.168.44.103:8000/surveys/", {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`, // Cú pháp đúng cho Bearer token
-                },
-            });
+            const api = authApis(token);
+            const response = await api.get(endpoints.surveys || "/surveys/");
+            const data = response.data;
+            console.log("Danh sách khảo sát từ API:", data);
 
-            if (response.ok) {
-                const data = await response.json();
-                console.log("Danh sách khảo sát từ API:", data);
+            const actualSurveys = data.results || data;
+            setSurveys(actualSurveys);
 
-                const actualSurveys = data.results || data; // Kiểm tra nếu có results trong data
-                setSurveys(actualSurveys); // Gán dữ liệu khảo sát vào state
-
-                // Dùng map trên actualSurveys để tạo dữ liệu cho biểu đồ
-                const chartData = await Promise.all(
-                    actualSurveys.map(async (survey) => {
-                        if (survey.id) {  // Đảm bảo survey.id không phải null hoặc undefined
-                            const token = await AsyncStorage.getItem("token");  // Lấy token
-                            const res = await fetch(`http://192.168.44.103:8000/surveys/${survey.id}/response-rate/`, {
-                                headers: {
-                                    Authorization: `Bearer ${token}`,  // Đính kèm token vào từng request phụ
-                                },
-                            });
-                            const json = await res.json();
-                            console.log("Phản hồi từ API response-rate:", json);
-                            return {
-                                name: survey.title && survey.title.length > 10 ? survey.title.slice(0, 10) + "..." : survey.title,
-                                rate: json.response_rate || 0,  // Đảm bảo có giá trị mặc định khi response_rate không có
-                            };
-                        }
+            // Dùng map trên actualSurveys để tạo dữ liệu cho biểu đồ
+            const chartData = await Promise.all(
+                actualSurveys.map(async (survey) => {
+                    if (survey.id) {
+                        const res = await api.get(`/surveys/${survey.id}/response-rate/`);
+                        const json = res.data;
+                        console.log("Phản hồi từ API response-rate:", json);
                         return {
                             name: survey.title && survey.title.length > 10 ? survey.title.slice(0, 10) + "..." : survey.title,
-                            rate: 0,  // Giá trị mặc định khi survey không có id
+                            rate: json.response_rate || 0,
                         };
-                    })
-                );
+                    }
+                    return {
+                        name: survey.title && survey.title.length > 10 ? survey.title.slice(0, 10) + "..." : survey.title,
+                        rate: 0,
+                    };
+                })
+            );
 
-                setSurveyChartData(chartData); // Gán dữ liệu biểu đồ vào state
-            } else {
-                console.error("Lỗi khi lấy danh sách khảo sát:", response.status);
-            }
+            setSurveyChartData(chartData);
         } catch (error) {
             console.error("Lỗi khi gọi API khảo sát:", error);
         }
@@ -111,13 +125,10 @@ const AdminHome = () => {
     const fetchResidentCount = async () => {
         try {
             const token = await AsyncStorage.getItem("token");
-            const res = await fetch("http://192.168.44.103:8000/residents/count-resident/", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-            const data = await res.json();
-            console.log("Số lượng cư dân:", data.count);  // <- chỗ này phải đúng key
+            const api = authApis(token);
+            const res = await api.get(endpoints.countResident);
+            const data = res.data;
+            console.log("Số lượng cư dân:", data.count);
             setResidentCount(data.count);
         } catch (err) {
             console.error("Lỗi khi lấy số lượng cư dân:", err);
@@ -127,19 +138,16 @@ const AdminHome = () => {
     const fetchApartmentCount = async () => {
         try {
             const token = await AsyncStorage.getItem("token");
-            const res = await fetch("http://192.168.44.103:8000/apartments/total-apartments/", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-            const data = await res.json();
+            const api = authApis(token);
+            const res = await api.get(endpoints.totalApartments);
+            const data = res.data;
             console.log("Số lượng căn hộ:", data.count);
             setApartmentCount(data.count);
         }
         catch (err) {
             console.error("Lỗi khi lấy số lượng căn hộ:", err);
         }
-    }
+    };
 
     //Hàm useEffect
     useEffect(() => {
@@ -169,7 +177,6 @@ const AdminHome = () => {
 
 
     // Hàm đăng xuất
-    // Xóa token và thông tin người dùng khỏi AsyncStorage
     const logout = async () => {
         try {
             await AsyncStorage.removeItem("token");
@@ -187,14 +194,14 @@ const AdminHome = () => {
     return (
         <ScrollView style={{flex: 1}}>
             <LinearGradient
-            colors={['#fff', '#d7d2cc', '#FFBAC3']} // Màu gradient
-            style={{flex: 1, padding: 10}} // Đảm bảo gradient bao phủ toàn màn hình
+            colors={['#fad390', '#fad0c4', '#ff9a9e']}
+            style={{flex: 1, padding: 10}}
         >
             <View style={{ flexDirection: "row", justifyContent: "space-around"}}>
                 <TouchableOpacity onPress={navigateToAdminUser} style={MyStyles.imageContainer}>
                     <View style={{ alignItems: "center" }}>
                         <Image
-                            source={require("../../assets/user.png")} // Đường dẫn đến hình ảnh
+                            source={require("../../assets/user.png")}
                             style={MyStyles.image}
                         />
                         <Text style={[MyStyles.padding, MyStyles.textSmall]}>Quản lý Tài khoản</Text>
@@ -204,41 +211,29 @@ const AdminHome = () => {
                 <TouchableOpacity onPress={navigateToAdminResident} style={MyStyles.imageContainer}>
                     <View style={{ alignItems: "center" }}>
                         <Image
-                            source={require("../../assets/resident.png")} // Đường dẫn đến hình ảnh
+                            source={require("../../assets/resident.png")}
                             style={MyStyles.image}
                         />
                         <Text style={[MyStyles.padding, MyStyles.textSmall]}>Quản lý Cư dân</Text>
                     </View>
                 </TouchableOpacity>
-            </View>
 
-            <View style={{ flexDirection: "row", justifyContent: "space-around"}}>
                 <TouchableOpacity onPress={navigateToAdminApartment} style={MyStyles.imageContainer}>
                     <View style={{ alignItems: "center" }}>
                         <Image
-                            source={require("../../assets/apartment.png")} // Đường dẫn đến hình ảnh
+                            source={require("../../assets/apartment.png")}
                             style={MyStyles.image}
                         />
                         <Text style={[MyStyles.padding, MyStyles.textSmall]}>Quản lý Căn hộ</Text>
                     </View>
                 </TouchableOpacity>
-
-                <TouchableOpacity onPress={navigateToAdminApartmentTransferHistorys} style={MyStyles.imageContainer}>
-                    <View style={{ alignItems: "center" }}>
-                        <Image
-                            source={require("../../assets/apartment-transfer-historys.png")} // Đường dẫn đến hình ảnh
-                            style={MyStyles.image}
-                        />
-                        <Text style={[MyStyles.padding, MyStyles.textSmall]}>Lịch sử chuyển nhượng</Text>
-                    </View>
-                </TouchableOpacity>     
             </View>
 
             <View style={{ flexDirection: "row", justifyContent: "space-around"}}>
                 <TouchableOpacity onPress={navigateToAdminSurvey} style={MyStyles.imageContainer}>
                     <View style={{ alignItems: "center" }}>
                         <Image
-                            source={require("../../assets/survey.png")} // Đường dẫn đến hình ảnh
+                            source={require("../../assets/survey.png")}
                             style={MyStyles.image}
                         />
                         <Text style={[MyStyles.padding, MyStyles.textSmall]}>Quản lý Khảo sát</Text>
@@ -248,10 +243,20 @@ const AdminHome = () => {
                 <TouchableOpacity onPress={navigateToAdminFeedback} style={MyStyles.imageContainer}>
                     <View style={{ alignItems: "center" }}>
                         <Image
-                            source={require("../../assets/admin-feedback.png")} // Đường dẫn đến hình ảnh
+                            source={require("../../assets/admin-feedback.png")}
                             style={MyStyles.image}
                         />
                         <Text style={[MyStyles.padding, MyStyles.textSmall]}>Quản lý Phản ánh</Text>
+                    </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={navigateToAdminApartmentTransferHistorys} style={MyStyles.imageContainer}>
+                    <View style={{ alignItems: "center" }}>
+                        <Image
+                            source={require("../../assets/apartment-transfer-historys.png")}
+                            style={MyStyles.image}
+                        />
+                        <Text style={[MyStyles.padding, MyStyles.textSmall]}>Lịch sử chuyển nhà</Text>
                     </View>
                 </TouchableOpacity>
             </View>
@@ -260,7 +265,7 @@ const AdminHome = () => {
                 <TouchableOpacity onPress={navigateToAdminLocker} style={MyStyles.imageContainer}>
                     <View style={{ alignItems: "center" }}>
                         <Image
-                            source={require("../../assets/admin-locker.png")} // Đường dẫn đến hình ảnh
+                            source={require("../../assets/admin-locker.png")}
                             style={MyStyles.image}
                         />
                         <Text style={[MyStyles.padding, MyStyles.textSmall]}>Quản lý tủ đồ</Text>
@@ -270,19 +275,39 @@ const AdminHome = () => {
                 <TouchableOpacity onPress={navigateToAdminPayment} style={MyStyles.imageContainer}>
                     <View style={{ alignItems: "center" }}>
                         <Image
-                            source={require("../../assets/admin_payment.png")} // Đường dẫn đến hình ảnh
+                            source={require("../../assets/admin_payment.png")}
                             style={MyStyles.image}
                         />
                         <Text style={[MyStyles.padding, MyStyles.textSmall]}>Quản lý thanh toán</Text>
                     </View>
                 </TouchableOpacity>
+
+                <TouchableOpacity onPress={navigateToAdminAmenity} style={MyStyles.imageContainer}>
+                    <View style={{ alignItems: "center" }}>
+                        <Image
+                            source={require("../../assets/admin-amenity.png")}
+                            style={MyStyles.image}
+                        />
+                        <Text style={[MyStyles.padding, MyStyles.textSmall]}>Quản lý tiện ích</Text>
+                    </View>
+                </TouchableOpacity>
             </View>
 
             <View style={{ flexDirection: "row", justifyContent: "space-around"}}>
+                <TouchableOpacity onPress={navigateToAdminParkingRegistrations} style={MyStyles.imageContainer}>
+                    <View style={{ alignItems: "center" }}>
+                        <Image
+                            source={require("../../assets/parkingRegistrations.png")}
+                            style={MyStyles.image}
+                        />
+                        <Text style={[MyStyles.padding, MyStyles.textSmall]}>Quản lý gửi xe cư dân</Text>
+                    </View>
+                </TouchableOpacity>
+
                 <TouchableOpacity onPress={navigateToAdminChatScreen} style={MyStyles.imageContainer}>
                     <View style={{ alignItems: "center" }}>
                         <Image
-                            source={require("../../assets/admin-chatscreen.png")} // Đường dẫn đến hình ảnh
+                            source={require("../../assets/admin-chatscreen.png")}
                             style={MyStyles.image}
                         />
                         <Text style={[MyStyles.padding, MyStyles.textSmall]}>Quản lý tin nhắn trực tuyến</Text>
@@ -319,6 +344,7 @@ const AdminHome = () => {
                     <Text style={{ fontSize: 30, fontWeight: 'bold', color: '#007AFF' }}>
                         {residentCount !== null ? residentCount : '...'}
                     </Text>
+                    
                 </View>
             </View>
 

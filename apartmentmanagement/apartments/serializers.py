@@ -2,7 +2,7 @@ from rest_framework import serializers, generics
 from django.contrib.auth import get_user_model
 from .models import (Resident, Apartment,ApartmentTransferHistory, PaymentCategory, PaymentTransaction,
                      ParcelLocker, ParcelItem, Feedback, Survey, SurveyOption, SurveyResponse,
-                     VisitorVehicleRegistration)
+                     VisitorVehicleRegistration, Amenity, AmenityBooking)
 
 User = get_user_model()
 
@@ -229,7 +229,6 @@ class SurveySerializer(serializers.ModelSerializer):
 
         return survey
 
-
 # Visitor Vehicle Registration Serializer
 class VisitorVehicleRegistrationSerializer(serializers.ModelSerializer):
     resident_email = serializers.EmailField(source='resident.user.email', read_only=True)
@@ -240,4 +239,25 @@ class VisitorVehicleRegistrationSerializer(serializers.ModelSerializer):
         model = VisitorVehicleRegistration
         fields = ['id', 'resident_id', 'resident_email', 'visitor_name', 'vehicle_number',
                   'registration_date', 'approved', 'first_name', 'last_name']
-        read_only_fields = ['registration_date', 'created_date', 'updated_date']
+        read_only_fields = ['created_date', 'updated_date']
+
+# Amenity Serializer
+class AmenitySerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Amenity
+        fields = ['id', 'name', 'location', 'description', 'image', 'opening_time', 'closing_time', 'max_bookings_per_slot']
+
+    def get_image(self, obj):
+        return obj.image.url if obj.image else None
+
+# Amenity Booking Serializer
+class AmenityBookingSerializer(serializers.ModelSerializer):
+    amenity = AmenitySerializer()
+    resident = ResidentSerializer()
+
+    class Meta:
+        model = AmenityBooking
+        fields = ['id', 'amenity', 'resident', 'booking_date',
+            'start_time', 'end_time', 'status', 'note']

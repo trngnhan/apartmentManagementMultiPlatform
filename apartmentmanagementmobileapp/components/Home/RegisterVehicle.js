@@ -2,11 +2,12 @@ import React, { useState } from "react";
 import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
+import { endpoints, authApis } from "../../configs/Apis";
 
 const RegisterVehicle = ({ navigation }) => {
-    const [visitorName, setVisitorName] = useState(""); // Tên khách
-    const [vehicleNumber, setVehicleNumber] = useState(""); // Biển số xe
-    const [loading, setLoading] = useState(false); // Trạng thái xử lý
+    const [visitorName, setVisitorName] = useState(""); 
+    const [vehicleNumber, setVehicleNumber] = useState(""); 
+    const [loading, setLoading] = useState(false);
 
     const handleRegister = async () => {
         if (!visitorName || !vehicleNumber) {
@@ -26,32 +27,23 @@ const RegisterVehicle = ({ navigation }) => {
             }
 
             const user = JSON.parse(userData);
+            const api = authApis(token);
+            const now = new Date().toISOString();
 
-            const response = await fetch(
-                // "http://192.168.44.101:8000/visitorvehicleregistrations/",
-                "http://192.168.44.103:8000/visitorvehicleregistrations/",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        resident: user.resident_id, // ID của cư dân
-                        resident_email: user.email, // Email của cư dân
-                        visitor_name: visitorName,
-                        vehicle_number: vehicleNumber,
-                    }),
-                }
-            );
+            const res = await api.post(endpoints.visitorVehicleRegistrations, {
+                resident: user.resident_id,
+                resident_email: user.email,
+                visitor_name: visitorName,
+                vehicle_number: vehicleNumber,
+                registration_date: now,
+            });
 
-            if (response.ok) {
+            if (res.status === 201 || res.status === 200) {
                 Alert.alert("Thành công", "Đăng ký xe thành công.");
-                navigation.goBack(); // Quay lại màn hình trước đó
+                navigation.goBack();
             } else {
-                const errorData = await response.json();
-                console.error("Lỗi khi gọi API:", errorData);
-                Alert.alert("Lỗi", errorData.detail || "Đăng ký xe thất bại.");
+                console.error("Lỗi khi gọi API:", res.data);
+                Alert.alert("Lỗi", res.data.detail || "Đăng ký xe thất bại.");
             }
         } catch (error) {
             console.error("Lỗi khi gọi API:", error);
@@ -63,8 +55,8 @@ const RegisterVehicle = ({ navigation }) => {
 
     return (
         <LinearGradient
-            colors={['#fff', '#d7d2cc', '#FFBAC3']} // Màu gradient
-            style={{ flex: 1 }} // Đảm bảo gradient bao phủ toàn màn hình
+            colors={['#fff', '#d7d2cc', '#FFBAC3']} 
+            style={{ flex: 1 }}
         >
             <View style={[styles.container]}>
             <Text style={[styles.title]}>Đăng ký xe cho người thân</Text>

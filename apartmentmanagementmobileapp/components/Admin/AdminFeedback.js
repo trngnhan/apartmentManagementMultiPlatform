@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import MyStyles from "../../styles/MyStyles";
+import { endpoints, authApis } from "../../configs/Apis";
 import { Picker } from "@react-native-picker/picker";
 
 const AdminFeedback = () => {
@@ -16,16 +17,10 @@ const AdminFeedback = () => {
     const fetchFeedbacks = async () => {
         try {
             const token = await AsyncStorage.getItem("token");
-            const response = await fetch("http://192.168.44.103:8000/feedbacks/", {
-                method: "GET",
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setFeedbacks(data.results || data);
-            } else {
-                setError("Không thể tải danh sách phản ánh.");
-            }
+            const api = authApis(token);
+            const response = await api.get(endpoints.feedbacks);
+            const data = response.data;
+            setFeedbacks(data.results || data);
         } catch (err) {
             console.error(err);
             setError("Đã xảy ra lỗi khi tải phản ánh.");
@@ -33,63 +28,55 @@ const AdminFeedback = () => {
             setLoading(false);
         }
     };
-
-    // const sendReply = async () => {
-    //     try {
-    //         const token = await AsyncStorage.getItem("token");
-    //         const response = await fetch(`http://192.168.44.103:8000/feedbacks/${selectedFeedbackId}/reply/`, {
-    //             method: "POST",
-    //             headers: {
-    //                 "Content-Type": "application/json",
-    //                 Authorization: `Bearer ${token}`,
-    //             },
-    //             body: JSON.stringify({ reply: replyContent }),
-    //         });
-    //         if (response.ok) {
-    //             alert("Phản hồi đã được gửi.");
-    //             setReplyContent("");
-    //             setShowReplyModal(false);
-    //             fetchFeedbacks(); // reload
-    //         } else {
-    //             alert("Không thể gửi phản hồi.");
-    //         }
-    //     } catch (err) {
-    //         console.error(err);
-    //         alert("Lỗi khi gửi phản hồi.");
-    //     }
-    // };
-
+    
     const handleUpdateStatus = async (id, newStatus) => {
         try {
             const token = await AsyncStorage.getItem("token");
-
-            const response = await fetch(
-            `http://192.168.44.103:8000/feedbacks/${id}/update-status/`,
-            {
-                method: "PATCH",
-                headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ status: newStatus })
-            }
+            const api = authApis(token);
+            const response = await api.patch(endpoints.updateFeedbackStatus(id),
+                { status: newStatus }
             );
-
-            if (response.ok) {
+            if (response.status === 200 || response.status === 204) {
                 Alert.alert("Thành công", "Đã cập nhật trạng thái.");
                 fetchFeedbacks();
             } else {
-                const errorData = await response.json();
-                console.error("Lỗi:", errorData);
+                console.error("Lỗi:", response.data);
                 Alert.alert("Lỗi", "Không thể cập nhật trạng thái.");
-                }
+            }
         } catch (error) {
             console.error("Lỗi mạng:", error);
             Alert.alert("Lỗi", "Đã xảy ra lỗi khi kết nối.");
         }
     };
 
-
+    const handleDeleteFeedback = async (id) => {
+        Alert.alert(
+            "Xác nhận",
+            "Bạn có chắc muốn xoá phản ánh này?",
+            [
+                { text: "Hủy", style: "cancel" },
+                {
+                    text: "Xoá",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            const token = await AsyncStorage.getItem("token");
+                            const api = authApis(token);
+                            const res = await api.delete(`${endpoints.feedbacks}${id}/`);
+                            if (res.status === 204 || res.status === 200) {
+                                Alert.alert("Thành công", "Đã xoá phản ánh.");
+                                fetchFeedbacks();
+                            } else {
+                                Alert.alert("Lỗi", "Không thể xoá phản ánh.");
+                            }
+                        } catch (err) {
+                            Alert.alert("Lỗi", "Có lỗi xảy ra khi xoá phản ánh.");
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     const renderFeedback = ({ item }) => (
         <TouchableOpacity style={MyStyles.card} onPress={() => {
@@ -98,7 +85,7 @@ const AdminFeedback = () => {
         }}>
             <Text style={MyStyles.title}>Tiêu đề: {item.title}</Text>
             <Text style={MyStyles.description}>Nội dung: {item.content}</Text>
-            <Text styles={MyStyles.description}>Cư dân: {item.first_name} {item.last_name}</Text>
+            <Text style={MyStyles.description}>Cư dân: {item.first_name} {item.last_name}</Text>
             <Text style={MyStyles.description}>Email: {item.resident_email}</Text>
             <Text style={MyStyles.date}>
                 Ngày gửi: {new Date(item.created_date).toLocaleDateString("vi-VN", {
@@ -107,24 +94,24 @@ const AdminFeedback = () => {
                 })}
             </Text>
             <View style={{ marginTop: 4, flexDirection: "row", alignItems: "center" }}>
-                <Text styles={MyStyles.description}>Trạng thái: </Text>
+                <Text style={MyStyles.description}>Trạng thái: </Text>
                 <Picker
                     selectedValue={selectedStatuses[item.id] || item.status || 'NEW'}
                     onValueChange={(value) => {
-                    const updated = { ...selectedStatuses, [item.id]: value };
-                    setSelectedStatuses(updated);
-                    handleUpdateStatus(item.id, value);
+                        const updated = { ...selectedStatuses, [item.id]: value };
+                        setSelectedStatuses(updated);
+                        handleUpdateStatus(item.id, value);
                     }}
                     style={{
-                    backgroundColor: "#f0f0f0",
-                    borderWidth: 1,
-                    borderColor: "#ccc",
-                    color: "green",
-                    marginLeft: 8,
-                    width: 250,
-                    borderRadius: 6,
-                    marginBottom: 8,
-                    marginTop: 8,
+                        backgroundColor: "#f0f0f0",
+                        borderWidth: 1,
+                        borderColor: "#ccc",
+                        color: "green",
+                        marginLeft: 8,
+                        width: 250,
+                        borderRadius: 6,
+                        marginBottom: 8,
+                        marginTop: 8,
                     }}
                 >
                     <Picker.Item label="Mới" value="NEW" />
@@ -132,6 +119,18 @@ const AdminFeedback = () => {
                     <Picker.Item label="Đã xử lý" value="RESOLVED" />
                 </Picker>
             </View>
+            <TouchableOpacity
+                style={{
+                    backgroundColor: "#F44336",
+                    padding: 8,
+                    borderRadius: 6,
+                    marginTop: 10,
+                    alignSelf: "flex-end"
+                }}
+                onPress={() => handleDeleteFeedback(item.id)}
+            >
+                <Text style={{ color: "#fff", fontWeight: "bold" }}>Xoá phản ánh</Text>
+            </TouchableOpacity>
         </TouchableOpacity>
     );
 
@@ -157,24 +156,6 @@ const AdminFeedback = () => {
                         contentContainerStyle={{ paddingBottom: 20 }}
                     />
                 )}
-
-                {/* Modal phản hồi
-                <Modal visible={showReplyModal} animationType="slide" transparent={true}>
-                    <View style={MyStyles.modalContainer}>
-                        <View style={MyStyles.modalContent}>
-                            <Text style={MyStyles.modalTitle}>Phản hồi phản ánh</Text>
-                            <TextInput
-                                style={MyStyles.input}
-                                placeholder="Nội dung phản hồi"
-                                value={replyContent}
-                                onChangeText={setReplyContent}
-                                multiline
-                            />
-                            <Button title="Gửi" onPress={sendReply} color="#FF6F61" />
-                            <Button title="Hủy" onPress={() => setShowReplyModal(false)} color="#999" />
-                        </View>
-                    </View>
-                </Modal> */}
             </View>
         </LinearGradient>
     );

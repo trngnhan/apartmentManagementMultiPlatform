@@ -35,9 +35,10 @@ const Login = () => {
     const [msg, setMsg] = useState(null);
     const [loading, setLoading] = useState(false);
     const nav = useNavigation();
+    const [showPassword, setShowPassword] = useState(false);
     const dispatch = useContext(MyDispatchContext);
-    const translateX = useRef(new Animated.Value(-200)).current; // bắt đầu lệch trái
-    const opacity = useRef(new Animated.Value(0)).current;        // bắt đầu mờ
+    const translateX = useRef(new Animated.Value(-200)).current;
+    const opacity = useRef(new Animated.Value(0)).current;
 
     const setState = (value, field) => {
         setUser({ ...user, [field]: value });
@@ -87,9 +88,11 @@ const Login = () => {
                 let res = await Apis.post(endpoints["login"], {
                     ...user,
                     // client_id: "BV96e0rWzsGyZU0MFMjT1u19m5j0MXrJVCQaEQAZ",
-                    client_id: "aRgWqcaZzcRboHVnz6xZp5VR30eeiV4gBTC3cud6",
+                    // client_id: "aRgWqcaZzcRboHVnz6xZp5VR30eeiV4gBTC3cud6",4
+                    client_id: "fSVZKEXevRpuWBe2OsdrbiOUEglfk2NvWmWeSixY",
                     //client_id: "1nYlsTyukqBsyGyb7dhLVQcly1KeT4dmTObAf4lk",
-                    client_secret: "jwA8QVO1jqScm0taMdfbTDLBfqovrqvQKXQo0L8fbd9CzEJWdbRfww4yFMpSSZjt3e9jG9V3S8fHcKFnrTo8lUwbFyAliMAsKAdgmXzccGZiwGFCzyt0DyFNz6jHHYRB",
+                    //client_secret: "jwA8QVO1jqScm0taMdfbTDLBfqovrqvQKXQo0L8fbd9CzEJWdbRfww4yFMpSSZjt3e9jG9V3S8fHcKFnrTo8lUwbFyAliMAsKAdgmXzccGZiwGFCzyt0DyFNz6jHHYRB",
+                    client_secret: "w4sBJ4bSQo1xHfk9K7QGDwOsZgxXjsO2z2UGFpus2550d4gIY6JFovlPfnUP4NOBYsmNsoqwhOlSEStGmvstMNE4Zmbg9h6F8m1pVqjzcJgz7IIZyAktB1IhsHuwld1E",
                     grant_type: "password",
                 });
 
@@ -111,7 +114,7 @@ const Login = () => {
                         "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ."
                     );
                     setLoading(false);
-                    return; // Dừng quá trình đăng nhập
+                    return;
                 }
 
                 // Lưu dữ liệu người dùng và token vào AsyncStorage
@@ -119,7 +122,8 @@ const Login = () => {
                     "user",
                     JSON.stringify({
                         token: res.data.access_token,
-                        resident_id: u.data.resident_id, // Đảm bảo lưu resident_id
+                        // resident_id: u.data.resident_id,
+                        //locker_id: u.data.locker_id,
                         ...u.data,
                     })
                 );
@@ -140,11 +144,11 @@ const Login = () => {
 
                 // Điều hướng dựa trên quyền của người dùng
                 if (u.data.must_change_password) {
-                    nav.navigate("UpdateProfile"); // Điều hướng đến UpdateProfile nếu cần đổi mật khẩu
+                    nav.navigate("UpdateProfile");
                 } else if (u.data.is_superuser) {
-                    nav.navigate("AdminHome"); // Điều hướng đến trang admin
+                    nav.navigate("AdminHome");
                 } else {
-                    nav.navigate("ResidentHome"); // Điều hướng đến ResidentHome
+                    nav.navigate("ResidentHome");
                 }
             } catch (ex) {
                 console.error("Lỗi đăng nhập:", ex);
@@ -157,13 +161,13 @@ const Login = () => {
 
     return (
         <LinearGradient
-            colors={['#fff', '#d7d2cc', '#FFBAC3']} // Màu gradient
-            style={{ flex: 1 }} // Đảm bảo gradient bao phủ toàn màn hình
+            colors={['#fff', '#d7d2cc', '#FFBAC3']}
+            style={{ flex: 1 }}
         >
             <View>
             <ScrollView>
                 <Image
-                    source={require("../../assets/logo.png")} // Đường dẫn đến hình ảnh logo
+                    source={require("../../assets/avtApartment.png")}
                     style={{
                         marginTop: 50,
                         width: 300,
@@ -209,8 +213,17 @@ const Login = () => {
                         style={MyStyles.m}
                         key={i.field}
                         label={i.label}
-                        secureTextEntry={i.secureTextEntry}
-                        right={<TextInput.Icon icon={i.icon} />}
+                        secureTextEntry={i.field === "password" ? !showPassword : false}
+                        right={
+                            i.field === "password" ? (
+                                <TextInput.Icon
+                                    icon={showPassword ? "eye-off" : "eye"}
+                                    onPress={() => setShowPassword(!showPassword)}
+                                />
+                            ) : (
+                                <TextInput.Icon icon={i.icon} />
+                            )
+                        }
                     />
                 ))}
 
@@ -220,18 +233,18 @@ const Login = () => {
                     onPress={login}
                     mode="contained"
                     style={{
-                        backgroundColor: "#FF6F61", // Màu nền nút
-                        borderRadius: 15, // Bo góc
-                        paddingVertical: 2, // Khoảng cách trên dưới
+                        backgroundColor: "#FF6F61",
+                        borderRadius: 15,
+                        paddingVertical: 2,
                         width: 350,
-                        alignSelf: "center", // Căn giữa
-                        elevation: 5, // Đổ bóng
-                        marginTop: 20, // Khoảng cách phía trên
+                        alignSelf: "center",
+                        elevation: 5,
+                        marginTop: 20,
                     }}
                     labelStyle={{
-                        color: "white", // Màu chữ
-                        fontSize: 16, // Kích thước chữ
-                        fontWeight: "bold", // Đậm chữ
+                        color: "white", 
+                        fontSize: 16,
+                        fontWeight: "bold",
                     }}
                 >
                     Đăng nhập
@@ -243,20 +256,20 @@ const Login = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    marginTop: 30,
-    alignItems: 'center',
-  },
-  text: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#4A90E2', // màu xanh nhã
-    letterSpacing: 1.5, // giãn cách chữ
-    textTransform: 'capitalize', // viết hoa chữ đầu
-    textShadowColor: '#00000055', // bóng mờ nhẹ
-    textShadowOffset: { width: 1, height: 2 },
-    textShadowRadius: 4,
-  },
+    container: {
+        marginTop: 30,
+        alignItems: 'center',
+    },
+    text: {
+        fontSize: 26,
+        fontWeight: '700',
+        color: '#4A90E2',
+        letterSpacing: 1.5,
+        textTransform: 'capitalize',
+        textShadowColor: '#00000055',
+        textShadowOffset: { width: 1, height: 2 },
+        textShadowRadius: 4,
+    },
 });
 
 export default Login;
