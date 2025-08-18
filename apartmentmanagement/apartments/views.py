@@ -23,6 +23,7 @@ from django.utils import timezone
 from rest_framework import viewsets, generics, permissions, status, parsers
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, NotFound
+from rest_framework.generics import CreateAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -1110,7 +1111,7 @@ class VisitorVehicleRegistrationViewSet(viewsets.ViewSet, generics.ListAPIView, 
         serializer = self.get_serializer(registrations, many=True)
         return Response(serializer.data)
 
-class AdminAmenityViewSet(viewsets.ViewSet, generics.ListCreateAPIView, generics.DestroyAPIView, generics.UpdateAPIView):
+class AmenityViewSet(viewsets.ViewSet, generics.ListCreateAPIView, generics.DestroyAPIView, generics.UpdateAPIView):
     queryset = Amenity.objects.all()
     serializer_class = AmenitySerializer
 
@@ -1124,18 +1125,20 @@ class AdminAmenityViewSet(viewsets.ViewSet, generics.ListCreateAPIView, generics
         return [permissions.IsAuthenticated()]
 
 
-class AdminAmenityBookingListViewSet(viewsets.ViewSet, generics.ListAPIView):
-    queryset = AmenityBooking.objects.select_related('amenity', 'resident', 'resident__user').all()
+class AmenityBookingListViewSet(viewsets.ViewSet, generics.RetrieveUpdateAPIView, generics.ListCreateAPIView):
+    queryset = AmenityBooking.objects.select_related('amenity', 'resident', 'resident__user').all() 
     serializer_class = AmenityBookingSerializer
 
     def get_permissions(self):
-        admin_actions = ['create', 'update', 'partial_update', 'destroy', 'set-status']
-        if self.action in admin_actions:
+        admin_actions = ['set-status']
+        if hasattr(self, 'action') and self.action in admin_actions:
             return [permissions.IsAdminUser()]
-        # Các action xem/list, cư dân và admin đều được phép
-        elif self.action in ['list', 'retrieve']:
-            return [permissions.IsAuthenticated()]
         return [permissions.IsAuthenticated()]
+
+    def retrieve(self, request, pk=None):
+        bookings = AmenityBooking.objects.filter(amenity_id=pk)
+        serializer = self.serializer_class(bookings, many=True)
+        return Response(serializer.data)
 
     @action(methods=['patch'], detail=True, url_path='set-status')
     def set_status(self, request, pk=None):

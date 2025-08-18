@@ -224,6 +224,19 @@ const ResidentHome = () => {
                         <Text style={[MyStyles.padding, MyStyles.textSmall]}>Chat trực tuyến</Text>
                     </View>
                 </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: "row", justifyContent: "space-around", marginVertical: 10 }}>
+                {/* Hình ảnh để chuyển đến trang AmenityBookingScreen */}
+                <TouchableOpacity onPress={() => nav.navigate("AmenityBookingScreen", { resident: user })}>
+                    <View style={{ alignItems: "center" }}>
+                        <Image
+                            source={require("../../assets/amenitybooking.png")}
+                            style={MyStyles.image}
+                        />
+                        <Text style={[MyStyles.padding, MyStyles.textSmall]}>Đặt tiện ích chung cư</Text>
+                    </View>
+                </TouchableOpacity>
 
                 {/* Hình ảnh để chuyển đến trang PaymentScreen */}
                 <TouchableOpacity onPress={() => nav.navigate("PaymentScreen")}>
@@ -247,7 +260,12 @@ const ResidentHome = () => {
                             <Card.Content>
                                 <Title>Khách: {registration.visitor_name}</Title>
                                 <Paragraph>Biển số xe: {registration.vehicle_number}</Paragraph>
-                                <Paragraph>Ngày đăng ký: {registration.registration_date}</Paragraph>
+                                <Paragraph>Ngày đăng ký: {registration.registration_date ? new Date(registration.registration_date).toLocaleString("vi-VN", {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric"
+                                    }) : ""}
+                                </Paragraph>
                                 <Paragraph>
                                     Trạng thái: 
                                     {registration.approved === "NEW" ? " Mới" : registration.approved === "APPROVED" ? " Đồng ý" : "Không đồng ý"}

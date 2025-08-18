@@ -255,9 +255,9 @@ class AmenitySerializer(serializers.ModelSerializer):
 # Amenity Booking Serializer
 class AmenityBookingSerializer(serializers.ModelSerializer):
     amenity = AmenitySerializer()
-    resident = ResidentSerializer()
+    resident = serializers.PrimaryKeyRelatedField(queryset=Resident.objects.all())
 
     class Meta:
         model = AmenityBooking
         fields = ['id', 'amenity', 'resident', 'booking_date',
-            'start_time', 'end_time', 'status', 'note']
+            'start_time', 'end_time', 'status', 'note', 'usage_date']

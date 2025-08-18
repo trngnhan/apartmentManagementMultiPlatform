@@ -6,8 +6,8 @@ from .views import (UserViewSet, ResidentViewSet,
                     ApartmentViewSet, ApartmentTransferHistoryViewSet, PaymentTransactionViewSet,
                     PaymentCategoryViewSet,
                     ParcelLockerViewSet, FeedbackViewSet, SurveyViewSet, SurveyOptionViewSet,
-                    SurveyResponseViewSet, VisitorVehicleRegistrationViewSet, AdminAmenityBookingListViewSet,
-                    AdminAmenityViewSet)
+                    SurveyResponseViewSet, VisitorVehicleRegistrationViewSet, AmenityBookingListViewSet,
+                    AmenityViewSet)
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
@@ -27,8 +27,8 @@ router.register(r'surveys', SurveyViewSet, basename='survey')
 router.register(r'surveyoptions', SurveyOptionViewSet, basename='surveyoption')
 router.register(r'surveyresponses', SurveyResponseViewSet, basename='surveyresponse')
 router.register(r'visitorvehicleregistrations', VisitorVehicleRegistrationViewSet, basename='visitorvehicleregistration')
-router.register(r'amenities', AdminAmenityViewSet, basename='amenition')
-router.register('amentitybookinglist', AdminAmenityBookingListViewSet, basename='adminamentitybookinglistion')
+router.register(r'amenities', AmenityViewSet, basename='amenition')
+router.register('amenitybookings', AmenityBookingListViewSet, basename='amenitybookings')
 urlpatterns = [
     path('', include(router.urls)),
     path('paymenttransactions/momo-ipn/', views.momo_ipn, name='momo_ipn'),

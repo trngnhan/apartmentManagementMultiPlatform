@@ -32,6 +32,8 @@ import PaymentScreen from './components/Home/PaymentScreen';
 import PaymentDetailScreen from './components/Home/PaymentDetailScreen';
 import AdminAmenity from './components/Admin/AdminAmenity';
 import AdminAmenityBooking from './components/Admin/AdminAmenityBooking';
+import AmenityBookingScreen from './components/Home/AmenityBookingScreen';
+import BookingDetailScreen from './components/Home/BookingDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -55,6 +57,8 @@ export default function App() {
             <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ title: "Thông báo"}}/>
             <Stack.Screen name="PaymentScreen" component={PaymentScreen} options={{ title: "Thanh toán phí chung cư" }} />
             <Stack.Screen name="PaymentDetailScreen" component={PaymentDetailScreen} options={{ title: "Thông tin thanh toán phí chung cư" }} />
+            <Stack.Screen name="AmenityBookingScreen" component={AmenityBookingScreen} options={{ title: "Đặt tiện ích chung cư" }} />
+            <Stack.Screen name="BookingDetailScreen" component={BookingDetailScreen} options={{ title: "Chi tiết đặt tiện ích" }} />
             {/* Admin */}
             <Stack.Screen name="AdminHome" component={AdminHome} options={{ title: "Trang chủ quản trị" }} />
             <Stack.Screen name="AdminUser" component={AdminUser} options={{ title: "Quản lý tài khoản" }} />

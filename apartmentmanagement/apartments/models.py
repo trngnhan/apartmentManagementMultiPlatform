@@ -233,7 +233,8 @@ class Amenity(BaseModel):
 class AmenityBooking(BaseModel):
     amenity = models.ForeignKey(Amenity, on_delete=models.CASCADE, related_name='bookings')
     resident = models.ForeignKey(Resident, on_delete=models.CASCADE, related_name='amenity_bookings')
-    booking_date = models.DateField()
+    booking_date = models.DateField() #ngày đặt tiện ích
+    usage_date = models.DateField(null=True, blank=True) #ngày sử dụng tiện ich
     start_time = models.TimeField()
     end_time = models.TimeField()
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
@@ -243,4 +244,5 @@ class AmenityBooking(BaseModel):
         unique_together = ('amenity', 'resident', 'booking_date', 'start_time')
 
     def __str__(self):
-        return f"{self.resident.user.email} đăng ký {self.amenity.name} ngày {self.booking_date}"
+        return (f"Cư dân: {self.resident.user.first_name} {self.resident.user.last_name} - "
+                f"đăng ký {self.amenity.name} - ngày {self.booking_date}")
