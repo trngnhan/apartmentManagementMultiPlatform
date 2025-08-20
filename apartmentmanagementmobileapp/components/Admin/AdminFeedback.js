@@ -141,7 +141,7 @@ const AdminFeedback = () => {
     return (
         <LinearGradient colors={["#fff", "#d7d2cc", "#FFBAC3"]} style={{ flex: 1 }}>
             <View style={{ flex: 1, padding: 20, borderRadius: 20, alignItems: "center" }}>
-                <Text style={MyStyles.header}>Danh sách Phản ánh</Text>
+                <Text style={MyStyles.header}>QUẢN LÝ PHẢN ÁNH</Text>
                 {loading ? (
                     <ActivityIndicator size="large" color="#FF6F61" />
                 ) : error ? (

@@ -239,7 +239,7 @@ const ResidentHome = () => {
                 </TouchableOpacity>
 
                 {/* Hình ảnh để chuyển đến trang PaymentScreen */}
-                <TouchableOpacity onPress={() => nav.navigate("PaymentScreen")}>
+                <TouchableOpacity onPress={() => nav.navigate("PaymentScreen", { residentId: currentUserId })}>
                     <View style={{ alignItems: "center" }}>
                         <Image
                             source={require("../../assets/payment.png")}

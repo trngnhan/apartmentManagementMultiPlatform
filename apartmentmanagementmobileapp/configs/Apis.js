@@ -3,8 +3,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // const BASE_URL = "https://trngnhan.pythonanywhere.com/";
 // const BASE_URL = "http://192.168.44.106:8000/";
-// const BASE_URL = "http://192.168.44.103:8000/";
-const BASE_URL = "http://10.37.230.2:8000/";
+const BASE_URL = "http://192.168.44.103:8000/";
+// const BASE_URL = "http://10.37.230.2:8000/";
 
 export const endpoints = {
     login: "/o/token/",
@@ -63,6 +63,17 @@ export const endpoints = {
     amenityBooking: "/amenitybookings/",
     myAmenityBookings: (residentId) => `/amenitybookings/?resident=${residentId}`,
     amenityBookings: (amenityId) => `/amenitybookings/${amenityId}/`,
+
+    // Payment categories
+    paymentCategories: "/paymentcategories/",
+    paymentsTransactions: "/paymenttransactions/",
+    myPayments: "/paymenttransactions/my-payments/",
+    getTransaction: (transaction_id) => `/paymenttransactions/transaction/${transaction_id}/`,
+    createMomoPayment: (categoryId) => `/paymenttransactions/${categoryId}/create-momo-payment/`,
+    updatePaymentStatus: "/paymenttransactions/update-status/",
+    adminUpdatePayment: (id) => `/paymenttransactions/${id}/update-payment/`,
+
+    allResidents: "/paymentcategories/all-residents/"
 }
 export const authApis = (token) => {
     if (!token) {

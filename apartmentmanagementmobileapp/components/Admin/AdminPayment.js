@@ -23,6 +23,9 @@ const AdminPayment = () => {
     const [newCategoryType, setNewCategoryType] = useState("");
     const [creating, setCreating] = useState(false);
     const navigation = useNavigation();
+    const [residents, setResidents] = useState([]);
+    const [selectedResident, setSelectedResident] = useState("");
+    const [newNote, setNewNote] = useState("");
 
     const fetchPayments = async (active = "ALL") => {
         setLoading(true);
@@ -41,6 +44,17 @@ const AdminPayment = () => {
         }
     };
 
+    const fetchResidents = async () => {
+        try {
+            const token = await AsyncStorage.getItem("token");
+            const api = authApis(token);
+            const res = await api.get(endpoints.allResidents);
+            setResidents(res.data);
+        } catch (err) {
+            Alert.alert("Lỗi", "Không thể tải danh sách cư dân.");
+        }
+    };
+
     const handleCreatePayment = async () => {
         setCreating(true);
         try {
@@ -53,7 +67,9 @@ const AdminPayment = () => {
                 tax_percentage: newTax,
                 grace_period: newGrace,
                 category_type: newCategoryType,
-                active: true
+                active: true,
+                description: newNote,
+                resident: selectedResident
             });
             if (res.status === 201 || res.status === 200) {
                 setCreateModalVisible(false);
@@ -63,6 +79,7 @@ const AdminPayment = () => {
                 setNewTax(""); 
                 setNewGrace(""); 
                 setNewCategoryType("");
+                setSelectedResident("");
                 fetchPayments(activeFilter);
                 Alert.alert("Thành công", "Đã tạo hóa đơn mới!");
             } else {
@@ -75,24 +92,24 @@ const AdminPayment = () => {
         }
     };
 
-    const lockPayment = async (paymentId) => {
+    const toggleActivePayment = async (paymentId, currentActive) => {
         try {
             const token = await AsyncStorage.getItem("token");
             const api = authApis(token);
             const res = await api.patch(endpoints.paymentCategoryLock(paymentId), 
-                { active: false });
+                { active: !currentActive });
             if (res.status === 200 || res.status === 204) {
-                Alert.alert("Thành công", "Hóa đơn đã được khóa.");
+                Alert.alert("Thành công", !currentActive ? "Hóa đơn đã được mở khoá." : "Hóa đơn đã được khoá.");
                 setPayments((prevPayments) =>
                     prevPayments.map((payment) =>
-                        payment.id === paymentId ? { ...payment, active: false } : payment
+                        payment.id === paymentId ? { ...payment, active: !currentActive } : payment
                     )
                 );
             } else {
-                Alert.alert("Lỗi", "Không thể khóa hóa đơn. Vui lòng thử lại.");
+                Alert.alert("Lỗi", "Không thể cập nhật trạng thái hóa đơn. Vui lòng thử lại.");
             }
         } catch (error) {
-            Alert.alert("Lỗi", "Đã xảy ra lỗi khi khóa hóa đơn.");
+            Alert.alert("Lỗi", "Đã xảy ra lỗi khi cập nhật trạng thái hóa đơn.");
         }
     };
 
@@ -126,7 +143,8 @@ const AdminPayment = () => {
 
     useEffect(() => {
         fetchPayments(activeFilter);
-    }, [activeFilter]);
+        if (createModalVisible) fetchResidents();
+    }, [activeFilter, createModalVisible]);
 
     const renderPayment = ({ item }) => (
         <TouchableOpacity
@@ -149,27 +167,30 @@ const AdminPayment = () => {
             <Text>VAT: {item.tax_percentage}</Text>
             <Text>Thời gian ân hạn (ngày): {item.grace_period}</Text>
             <Text>Loại phí: {categoryTypeDisplay(item.category_type)}</Text>
+            <Text>Ghi chú: {item.description || "Không có"}</Text>
             <Text>Trạng thái: {item.active ? "Hoạt động" : "Đã khoá"}</Text>
-            <Text style={{ marginBottom: 5 }}>
+            <Text>
                 Ngày tạo: {new Date(item.created_date).toLocaleDateString("vi-VN")}
+            </Text>
+            <Text style={{ marginBottom: 5 }}>
+                Cư dân: {item.resident_first_name && item.resident_last_name
+                    ? `${item.resident_first_name} ${item.resident_last_name}`
+                    : "Chưa có"}
             </Text>
 
             <TouchableOpacity
                 style={[
                     MyStyles.button,
                     {
-                        backgroundColor: item.active ? "#4CAF50" : "#999",
+                        backgroundColor: item.active ? "#4CAF50" : "#FF6F61",
                         marginBottom: 10,
-                        opacity: item.active ? 1 : 0.5,
+                        opacity: 1,
                     },
                 ]}
-                onPress={() => {
-                    if (item.active) lockPayment(item.id);
-                }}
-                disabled={!item.active}
+                onPress={() => toggleActivePayment(item.id, item.active)}
             >
                 <Text style={MyStyles.buttonText}>
-                    {item.active ? "Khoá" : "Đã khoá"}
+                    {item.active ? "Khoá" : "Mở khoá"}
                 </Text>
             </TouchableOpacity>
         </TouchableOpacity>
@@ -177,7 +198,7 @@ const AdminPayment = () => {
 
     return (
         <View style={MyStyles.containerr}>
-            <Text style={styles.header}>Quản lý giao dịch thanh toán</Text>
+            <Text style={styles.header}>QUẢN LÝ GIAO DỊCH THANH TOÁN</Text>
             <TouchableOpacity
                 style={[MyStyles.button, { backgroundColor: "#4CAF50", marginBottom: 10 }]}
                 onPress={() => setCreateModalVisible(true)}
@@ -253,6 +274,12 @@ const AdminPayment = () => {
                             keyboardType="numeric"
                             style={{ marginBottom: 10 }}
                         />
+                        <TextInput
+                            label="Ghi chú (tuỳ chọn)"
+                            value={newNote}
+                            onChangeText={setNewNote}
+                            style={{ marginBottom: 10 }}
+                        />
                         <View style={{ marginBottom: 10 }}>
                             <Text style={{ marginBottom: 5, color: "#888" }}>Loại phí</Text>
                             <View style={{
@@ -269,6 +296,29 @@ const AdminPayment = () => {
                                     <Picker.Item label="Bảo trì" value="MAINTENANCE" />
                                     <Picker.Item label="Tiện ích" value="UTILITY" />
                                     <Picker.Item label="Dịch vụ" value="SERVICE" />
+                                </Picker>
+                            </View>
+                        </View>
+                        <View style={{ marginBottom: 10 }}>
+                            <Text style={{ marginBottom: 5, color: "#888" }}>Chọn cư dân nhận hóa đơn</Text>
+                            <View style={{
+                                borderWidth: 1,
+                                borderColor: "#ccc",
+                                borderRadius: 5,
+                                overflow: "hidden"
+                            }}>
+                                <Picker
+                                    selectedValue={selectedResident}
+                                    onValueChange={(itemValue) => setSelectedResident(itemValue)}
+                                >
+                                    <Picker.Item label="Chọn cư dân" value="" />
+                                    {residents.map(resident => (
+                                        <Picker.Item
+                                            key={resident.id}
+                                            label={`${resident.first_name || ""} ${resident.last_name || ""}`.trim() || `ID: ${resident.id}`}
+                                            value={resident.id}
+                                        />
+                                    ))}
                                 </Picker>
                             </View>
                         </View>
@@ -328,7 +378,7 @@ const styles = StyleSheet.create({
     header: {
         fontSize: 22,
         fontWeight: "bold",
-        marginBottom: 10,
+        marginBottom: 15,
         textAlign: "center"
     },
     card: {

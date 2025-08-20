@@ -56,6 +56,8 @@ class UserSerializer(serializers.ModelSerializer):
 class ResidentSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     image = serializers.ImageField(source='user.profile_picture', read_only=True)
+    first_name = serializers.CharField(source='user.first_name')
+    last_name = serializers.CharField(source='user.last_name')
 
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
@@ -65,7 +67,7 @@ class ResidentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Resident
-        fields = ['id', 'user', 'user_id', 'image']
+        fields = ['id', 'user', 'user_id', 'image', 'first_name', 'last_name']
         read_only_fields = ['created_date', 'updated_date']
 
 
@@ -97,11 +99,14 @@ class ApartmentTransferHistorySerializer(serializers.ModelSerializer):
 
 # Payment Category Serializer
 class PaymentCategorySerializer(serializers.ModelSerializer):
+    resident_first_name = serializers.CharField(source='resident.user.first_name', read_only=True)
+    resident_last_name = serializers.CharField(source='resident.user.last_name', read_only=True)
 
     class Meta:
         model = PaymentCategory
         fields = ['id', 'name', 'amount', 'is_recurring', 'description', 'active', 'frequency',
-                  'tax_percentage', 'grace_period', 'category_type', 'created_date', 'total_amount']
+                  'tax_percentage', 'grace_period', 'category_type', 'created_date', 'total_amount',
+                  'resident', 'resident_first_name', 'resident_last_name']
         read_only_fields = ['created_date', 'updated_date']
 
     def validate_amount(self, value):
@@ -254,10 +259,9 @@ class AmenitySerializer(serializers.ModelSerializer):
 
 # Amenity Booking Serializer
 class AmenityBookingSerializer(serializers.ModelSerializer):
-    amenity = AmenitySerializer()
-    resident = serializers.PrimaryKeyRelatedField(queryset=Resident.objects.all())
+    amenity = serializers.PrimaryKeyRelatedField(queryset=Amenity.objects.all())
+    resident = ResidentSerializer()
 
     class Meta:
         model = AmenityBooking
-        fields = ['id', 'amenity', 'resident', 'booking_date',
-            'start_time', 'end_time', 'status', 'note', 'usage_date']
+        fields = '__all__'

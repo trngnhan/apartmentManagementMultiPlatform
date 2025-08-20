@@ -126,7 +126,7 @@ const AdminResident = () => {
             style={{ flex: 1 }}
         >
             <View style={MyStyles.containerr}>
-                <Text style={MyStyles.header}>Quản lý Cư dân</Text>
+                <Text style={MyStyles.header}>QUẢN LÝ CƯ DÂN</Text>
                 <TextInput
                     style={MyStyles.searchInput}
                     placeholder="Tìm kiếm cư dân..."

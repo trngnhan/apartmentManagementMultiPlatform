@@ -113,6 +113,7 @@ const AdminAmenity = () => {
 
     const renderItem = ({ item }) => (
         <TouchableOpacity onPress={() => navigation.navigate("AdminAmenityBooking", { amenityId: item.id })} style={styles.card}>
+            {console.log("Rendering item:", item)}
             <Text style={[styles.title, {textAlign: "center"}]}>{item.name}</Text>
             {item.image ? (
                 <Image
@@ -175,7 +176,7 @@ const AdminAmenity = () => {
 
     return (
         <LinearGradient colors={['#fad390', '#fad0c4', '#ff9a9e']} style={MyStyles.container}>
-            <Text style={styles.header}>Danh sách tiện ích</Text>
+            <Text style={styles.header}>QUẢN LÝ TIỆN ÍCH</Text>
             <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16, marginTop: 4, justifyContent: "space-between" }}>
                 <TextInput
                     style={{
@@ -280,7 +281,7 @@ const AdminAmenity = () => {
                                 style={[styles.modalButton, { backgroundColor: "#aaa" }]}
                                 onPress={() => {
                                     setShowModal(false);
-                                    setEditId(null); // reset về null khi đóng modal
+                                    setEditId(null);
                                     setForm({
                                         name: "",
                                         description: "",

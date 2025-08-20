@@ -1,52 +1,75 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useEffect } from "react";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
 
-const BookingDetailScreen = ({ route }) => {
-    const { booking } = route.params;
-
+const BookingDetailScreen = ({ route, navigation }) => {
+    const { myBookings, amenities, resident } = route.params;
+    
+    // Lọc booking chỉ của cư dân hiện tại
+    const filteredBookings = myBookings.filter(
+        b => b.resident && (b.resident.id === resident.resident_id)
+    );
+    
     return (
-        <View style={styles.container}>
-            <Text style={styles.header}>Chi tiết đặt tiện ích</Text>
-            <Text style={styles.label}>Tên tiện ích:</Text>
-            <Text style={styles.value}>
-                {booking.amenity?.name || booking.amenityObj?.name || `ID: ${booking.amenity}`}
-            </Text>
-            <Text style={styles.label}>Ngày sử dụng:</Text>
-            <Text style={styles.value}>{booking.booking_date}</Text>
-            <Text style={styles.label}>Thời gian:</Text>
-            <Text style={styles.value}>
-                {booking.start_time?.slice(0,5)} - {booking.end_time?.slice(0,5)}
-            </Text>
-            <Text style={styles.label}>Trạng thái:</Text>
-            <Text style={styles.value}>{booking.status}</Text>
-            <Text style={styles.label}>Ghi chú:</Text>
-            <Text style={styles.value}>{booking.note || "Không có ghi chú"}</Text>
-        </View>
+        <LinearGradient colors={['#ffffff', '#fafafa', '#69ac91']} style={{ flex: 1, padding: 16 }}>
+            <Text style={styles.header}>CÁC TIỆN ÍCH ĐÃ ĐẶT</Text>
+            <FlatList
+                data={filteredBookings}
+                keyExtractor={item => item.id?.toString()}
+                renderItem={({ item }) => {
+                    const amenityObj = amenities.find(a => a.id === item.amenity || a.id === item.amenity?.id);
+                    return (
+                        <TouchableOpacity style={styles.resultCard}>
+                            <Text style={styles.title}>
+                                Tên tiện ích: {amenityObj?.name || item.amenity?.name || item.amenity}
+                            </Text>
+                            <Text>Ngày đặt: {item.booking_date ? new Date(item.booking_date).toLocaleDateString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit" }) : ""}</Text>
+                            <Text>Ngày sử dụng: {item.usage_date ? new Date(item.usage_date).toLocaleDateString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit" }) : ""}</Text>
+                            <Text>Thời gian: {item.start_time?.slice(0,5)} - {item.end_time?.slice(0,5)}</Text>
+                            <Text>
+                                Trạng thái:{" "}
+                                <Text style={{ fontWeight: "bold", color: item.status === "confirmed" ? "green" : "red" }}>
+                                    {item.status === "NEW"
+                                    ? "Mới"
+                                    : item.status === "APPROVED"
+                                    ? "Đồng ý"
+                                    : item.status === "REJECTED"
+                                    ? "Không đồng ý"
+                                    : item.status}
+                                </Text>
+                            </Text>
+                            <Text>Ghi chú: {item.note || "Không có"}</Text>
+                        </TouchableOpacity>
+                    );
+                }}
+                ListEmptyComponent={<Text style={{ textAlign: "center", marginTop: 20 }}>Chưa có lịch sử đặt tiện ích.</Text>}
+            />
+        </LinearGradient>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 24,
-        backgroundColor: "#f8f8f8"
-    },
     header: {
-        fontSize: 22,
         fontWeight: "bold",
-        marginBottom: 20,
-        color: "#0F4C75",
-        textAlign: "center"
+        fontSize: 25,
+        marginBottom: 5,
+        textAlign: "center",
+        color: "#0F4C75"
     },
-    label: {
+    resultCard: {
+        backgroundColor: "#e8f5e9",
+        borderRadius: 10,
+        padding: 14,
+        marginTop: 12,
+        alignItems: "flex-start",
+        width: "100%",
+        alignSelf: "stretch",
+    },
+    title: {
+        color: "#388e3c",
         fontWeight: "bold",
-        marginTop: 10,
-        color: "#333"
-    },
-    value: {
         fontSize: 16,
-        marginBottom: 6,
-        color: "#222"
+        marginBottom: 4,
     }
 });
 

@@ -24,7 +24,6 @@ const AmenityBookingScreen = ({navigation}) => {
     useEffect(() => {
         fetchAmenities();
         if (resident) fetchMyBookings();
-        console.log("myBookings:", myBookings);
     }, [resident, booking]);
 
     const fetchMyBookings = async () => {
@@ -38,17 +37,13 @@ const AmenityBookingScreen = ({navigation}) => {
         }
     };
 
-    const handleViewBookingDetail = (booking) => {
-        navigation.navigate("BookingDetailScreen", { booking });
-    };
-
     const fetchAmenities = async () => {
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem("token");
             const api = authApis(token);
             const res = await api.get(endpoints.amenities);
-            console.log("Amenities fetched:", res.data);
+            //console.log("Amenities fetched:", res.data);
             setAmenities(res.data.results || res.data);
         } catch (err) {
             setAmenities([]);
@@ -75,7 +70,8 @@ const AmenityBookingScreen = ({navigation}) => {
             const payload = {
                 amenity: selectedAmenity.id,  
                 resident: resident.id - 1,
-                booking_date: usageDate,
+                booking_date: new Date().toISOString(),
+                usage_date: usageDate,
                 start_time: startTime,
                 end_time: endTime,
                 note: note,
@@ -105,7 +101,9 @@ const AmenityBookingScreen = ({navigation}) => {
     }
 
     return (
-            <LinearGradient colors={['#ffffffff', '#b0e3c4ff', '#69ac91ff']} style={[MyStyles.container, { padding: 20 }]}>
+            <LinearGradient colors={['#ffffffff', '#b0e3c4ff', '#69ac91ff']} 
+            style={[MyStyles.container, { padding: 20 }]}
+            >
                 <Text style={styles.header}>ĐẶT TIỆN TÍCH CHUNG CƯ</Text>
                 <Text style={{ marginBottom: 8, fontWeight: "bold"}}>CHỌN TIỆN ÍCH</Text>
                 <FlatList
@@ -139,7 +137,7 @@ const AmenityBookingScreen = ({navigation}) => {
                 />
 
                 <TextInput
-                    style={styles.input}
+                    style={[styles.input, { minHeight: 8, width: "70%" }]}
                     placeholder="Ngày sử dụng (YYYY-MM-DD)"
                     value={usageDate}
                     onChangeText={setUsageDate}
@@ -161,7 +159,7 @@ const AmenityBookingScreen = ({navigation}) => {
                 </View>
 
                 <TextInput
-                    style={[styles.input, { minHeight: 40 }]}
+                    style={[styles.input, { minHeight: 8, width: "100%" }]}
                     placeholder="Ghi chú (nếu có)"
                     value={note}
                     onChangeText={setNote}
@@ -178,7 +176,7 @@ const AmenityBookingScreen = ({navigation}) => {
 
                     <TouchableOpacity
                         style={[styles.buttonn, { flex: 1 }]}
-                        onPress={handleViewBookingDetail}
+                        onPress={() => navigation.navigate("BookingDetailScreen", { myBookings, amenities, resident })}
                     >
                         <Text style={{ color: "#fff", fontWeight: "bold", textAlign: "center" }}>Các tiện ích đã đặt</Text>
                     </TouchableOpacity>

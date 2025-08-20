@@ -159,7 +159,7 @@ const AdminUser = () => {
             style={{ flex: 1 }}
         >
             <View style={MyStyles.containerr}>
-                <Text style={[MyStyles.header, MyStyles.center]}>Danh sách Người dùng</Text>
+                <Text style={[MyStyles.header, MyStyles.center]}>QUẢN LÝ NGƯỜI DÙNG</Text>
 
                 <TextInput
                     style={MyStyles.searchInput}

@@ -5,6 +5,7 @@ import { endpoints, authApis } from "../../configs/Apis";
 import MyStyles from "../../styles/MyStyles";
 import { Picker } from "@react-native-picker/picker";
 import { Alert } from "react-native";
+import { LinearGradient } from "react-native-svg";
 
 const AdminAmenityBooking = ({route}) => {
     const amenityId = route?.params?.amenityId;
@@ -20,6 +21,7 @@ const AdminAmenityBooking = ({route}) => {
             console.log(endpoints.amenityBookings(amenityId));
             const res = await api.get(endpoints.amenityBookings(amenityId));
             setBookings(res.data.results || res.data);
+            console.log("Bookings:", res.data.results || res.data);
         } catch (err) {
             setBookings([]);
         }
@@ -50,7 +52,11 @@ const AdminAmenityBooking = ({route}) => {
 
     const renderItem = ({ item }) => (
         <View style={styles.card}>
-            <Text style={styles.title}>Cư dân: {item.resident?.user?.first_name} {item.resident?.user?.last_name}</Text>
+            <Text style={styles.title}>
+            Cư dân: {(item.resident && item.resident.user && (item.resident.user.first_name || item.resident.user.last_name))
+                ? `${item.resident.user.first_name || ""} ${item.resident.user.last_name || ""}`.trim()
+                : "Không xác định"}
+            </Text>
             <Text>
                 Ngày đặt: {item.booking_date ? new Date(item.booking_date).toLocaleString("vi-VN", {
                     day: "2-digit",
@@ -100,7 +106,7 @@ const AdminAmenityBooking = ({route}) => {
 
     return (
         <View style={[MyStyles.container, { padding: 5 }]}>
-            <Text style={styles.header}>Danh sách cư dân đăng ký tiện ích</Text>
+            <Text style={styles.header}>DANH SÁCH CƯ DÂN ĐĂNG KÝ TIỆN ÍCH</Text>
             {loading ? (
                 <ActivityIndicator size="large" color="#4A90E2" />
             ) : (
@@ -117,7 +123,7 @@ const AdminAmenityBooking = ({route}) => {
 
 const styles = StyleSheet.create({
     header: {
-        fontSize: 22,
+        fontSize: 20,
         fontWeight: "bold",
         marginBottom: 16,
         color: "#0F4C75",

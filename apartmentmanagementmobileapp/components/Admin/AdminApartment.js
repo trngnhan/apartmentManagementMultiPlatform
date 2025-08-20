@@ -217,7 +217,7 @@ const AdminApartment = () => {
         style={{ flex: 1 }}
         >
             <View style={styles.container}>
-            <Text style={styles.header}>Danh sách Apartment</Text>
+            <Text style={styles.header}>QUẢN LÝ CHUNG CƯ</Text>
 
             <TouchableOpacity
                 onPress={() => {

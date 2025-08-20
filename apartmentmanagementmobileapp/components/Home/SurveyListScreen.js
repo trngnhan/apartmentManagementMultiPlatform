@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, ScrollView, Alert } from "react-native";
+import { View, ScrollView, Alert, StyleSheet } from "react-native";
 import { Card, Title, Paragraph, Button, RadioButton, Text } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MyStyles from "../../styles/MyStyles";
@@ -25,14 +25,12 @@ const SurveyListScreen = () => {
         }
     };
 
-    // Gọi API phản hồi khảo sát của người dùng
     const fetchMyResponses = async (tokenParam) => {
         try {
             const api = authApis(tokenParam);
             const res = await api.get(endpoints.mySurveyResponses || "/surveyresponses/");
             if (res.status === 200) {
                 const data = res.data;
-                console.log("Phản hồi khảo sát:", data);
                 const surveyIds = new Set(data.map((r) => r.survey));
                 setSubmittedSurveyIds(surveyIds);
 
@@ -49,7 +47,6 @@ const SurveyListScreen = () => {
         }
     };
 
-    // Lấy token và fetch data
     useEffect(() => {
         const loadData = async () => {
             try {
@@ -69,7 +66,6 @@ const SurveyListScreen = () => {
         loadData();
     }, []);
 
-    // Gửi phản hồi
     const submitResponse = async (surveyId, optionId) => {
         try {
             const res = await fetch("http://192.168.44.103:8000/surveyresponses/", {
@@ -95,20 +91,20 @@ const SurveyListScreen = () => {
     };
 
     return (
-        <ScrollView contentContainerStyle={{ padding: 16 }}>
-            <Title style={MyStyles.text}>Danh sách khảo sát</Title>
+        <ScrollView contentContainerStyle={styles.container}>
+            <Title style={styles.header}>DANH SÁCH KHẢO SÁT</Title>
 
             {surveys.map((survey) => {
                 const isSubmitted = submittedSurveyIds.has(survey.id);
 
                 return (
-                    <Card key={survey.id} style={{ marginBottom: 16 }}>
+                    <Card key={survey.id} style={styles.card}>
                         <Card.Content>
-                            <Title>{survey.title}</Title>
-                            <Paragraph>{survey.description}</Paragraph>
+                            <Title style={styles.surveyTitle}>{survey.title}</Title>
+                            <Paragraph style={styles.surveyDesc}>{survey.description}</Paragraph>
 
                             {isSubmitted ? (
-                                <Text style={{ marginTop: 8, fontStyle: "italic", color: "green" }}>
+                                <Text style={styles.submittedText}>
                                     Cư dân đã thực hiện khảo sát này.
                                 </Text>
                             ) : (
@@ -122,10 +118,10 @@ const SurveyListScreen = () => {
                                         {survey.options.map((opt) => (
                                             <View
                                                 key={opt.id}
-                                                style={{ flexDirection: "row", alignItems: "center" }}
+                                                style={styles.optionRow}
                                             >
-                                                <RadioButton value={opt.id.toString()} />
-                                                <Text>{opt.option_text}</Text>
+                                                <RadioButton value={opt.id.toString()} color="#FF6F61" />
+                                                <Text style={styles.optionText}>{opt.option_text}</Text>
                                             </View>
                                         ))}
                                     </RadioButton.Group>
@@ -142,7 +138,8 @@ const SurveyListScreen = () => {
                                                 );
                                             }
                                         }}
-                                        style={{ marginTop: 8 }}
+                                        style={styles.submitBtn}
+                                        labelStyle={{ color: "#fff", fontWeight: "bold" }}
                                     >
                                         Gửi phản hồi
                                     </Button>
@@ -155,5 +152,69 @@ const SurveyListScreen = () => {
         </ScrollView>
     );
 };
+
+const styles = StyleSheet.create({
+    container: {
+        padding: 16,
+        backgroundColor: "#FFF8F0",
+        flexGrow: 1,
+    },
+    header: {
+        fontSize: 25,
+        fontWeight: "bold",
+        color: "#FF6F61",
+        textAlign: "center",
+        marginBottom: 10,
+        marginTop: 8,
+        letterSpacing: 1,
+    },
+    card: {
+        marginBottom: 18,
+        borderRadius: 12,
+        backgroundColor: "#fff",
+        elevation: 3,
+        shadowColor: "#FF6F61",
+        shadowOpacity: 0.10,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 6,
+    },
+    surveyTitle: {
+        fontSize: 18,
+        fontWeight: "bold",
+        color: "#222",
+        marginBottom: 4,
+    },
+    surveyDesc: {
+        color: "#666",
+        marginBottom: 10,
+        fontSize: 15,
+    },
+    optionRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 4,
+        marginLeft: 6,
+    },
+    optionText: {
+        fontSize: 15,
+        color: "#333",
+    },
+    submittedText: {
+        marginTop: 8,
+        fontStyle: "italic",
+        color: "#4CAF50",
+        fontWeight: "bold",
+        fontSize: 15,
+    },
+    submitBtn: {
+        backgroundColor: "#FF6F61",
+        borderRadius: 8,
+        marginTop: 10,
+        paddingHorizontal: 18,
+        paddingVertical: 4,
+        alignSelf: "flex-end",
+        elevation: 2,
+    },
+});
 
 export default SurveyListScreen;

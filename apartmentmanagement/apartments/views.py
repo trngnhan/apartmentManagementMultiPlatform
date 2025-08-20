@@ -288,7 +288,7 @@ class ApartmentViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
 class ApartmentTransferHistoryViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
     queryset = ApartmentTransferHistory.objects.filter(active=True)
     serializer_class = ApartmentTransferHistorySerializer
-    pagination_class = Pagination  # Phân trang
+    pagination_class = Pagination
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['apartment', 'previous_owner', 'new_owner', 'active']
     ordering_fields = ['transfer_date', 'created_date']
@@ -338,10 +338,10 @@ class ApartmentTransferHistoryViewSet(viewsets.ViewSet, generics.ListCreateAPIVi
 
         return Response(ApartmentTransferHistorySerializer(transfer_history).data, status=status.HTTP_201_CREATED)
 
-class IsAdminOrManagement(IsAuthenticated):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and (request.user.is_staff or
-                request.user.groups.filter(name='Management').exists())
+# class IsAdminOrManagement(IsAuthenticated):
+#     def has_permission(self, request, view):
+#         return request.user.is_authenticated and (request.user.is_staff or
+#                 request.user.groups.filter(name='Management').exists())
 
 # Payment Category ViewSet
 class PaymentCategoryViewSet(viewsets.ViewSet, generics.ListCreateAPIView, generics.UpdateAPIView):
@@ -350,6 +350,26 @@ class PaymentCategoryViewSet(viewsets.ViewSet, generics.ListCreateAPIView, gener
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['is_recurring', 'active']
     search_fields = ['amount', 'description']
+
+    @action(methods=['get'], detail=False, url_path='all-residents')
+    def get_all_residents(self, request):
+        residents = Resident.objects.filter(active=True)
+        data = [
+            {
+                "id": resident.id,
+                "first_name": resident.user.first_name,
+                "last_name": resident.user.last_name,
+                "email": resident.user.email,
+            }
+            for resident in residents
+        ]
+        return Response(data, status=status.HTTP_200_OK)
+
+    @action(methods=['get'], detail=False, url_path='resident-active-categories')
+    def resident_active_categories(self, request):
+        categories = PaymentCategory.objects.filter(active=True)
+        serializer = self.get_serializer(categories, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update']:

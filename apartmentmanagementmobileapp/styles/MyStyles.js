@@ -55,7 +55,8 @@ export default StyleSheet.create({
         width: "100%",
       },
       header: {
-        fontSize: 18,
+        fontSize: 22,
+        textAlign: "center",
         fontWeight: "bold",
         marginBottom: 10,
       },
@@ -198,7 +199,7 @@ export default StyleSheet.create({
       modalOverlay: {
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: "rgba(192, 181, 181, 0)", // Làm mờ nền
+          backgroundColor: "rgba(192, 181, 181, 0)", 
       },
       name: {
         fontSize: 16,
@@ -216,6 +217,7 @@ export default StyleSheet.create({
       containerr: {
         flex: 1,
         padding: 20,
+        backgroundColor: "#ffffffff",
       },
       buttonText: {
         color: "#000",

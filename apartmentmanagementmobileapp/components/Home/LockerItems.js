@@ -101,7 +101,7 @@ const LockerItems = () => {
         style={{ flex: 1 }}
         >
             <ScrollView contentContainerStyle={styles.container}>
-            <Text style={MyStyles.titlee}>Danh sách món hàng trong tủ đồ</Text>
+            <Text style={MyStyles.titlee}>TỦ ĐỒ CỦA CƯ DÂN</Text>
             <TouchableOpacity onPress={handleBellPress}>
                 <Text style={MyStyles.bellIcon}>🔔 Thông báo</Text>
             </TouchableOpacity>

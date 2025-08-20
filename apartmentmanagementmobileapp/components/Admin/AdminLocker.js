@@ -176,7 +176,7 @@
     return (
         <LinearGradient colors={["#fff", "#d7d2cc", "#C6FFDD"]} style={{ flex: 1 }}>
         <View style={MyStyles.containerr}>
-            <Text style={MyStyles.header}>Quản lý Tủ đồ Cư dân</Text>
+            <Text style={MyStyles.header}>QUẢN LÝ TỦ ĐỒ CƯ DÂN</Text>
             <Button
             title="Tạo Tủ đồ"
             onPress={() => setShowModal(true)}

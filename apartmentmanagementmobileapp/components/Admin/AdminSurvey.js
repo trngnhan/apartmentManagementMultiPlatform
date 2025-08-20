@@ -132,7 +132,7 @@ const AdminSurvey = () => {
             style={{ flex: 1 }}
         >
             <View style={{ flex: 1, padding: 20, borderRadius: 20, alignItems: "center" }}>
-                <Text style={MyStyles.header}>Danh sách Khảo sát</Text>
+                <Text style={MyStyles.header}>QUẢN LÝ KHẢO SÁT</Text>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%" }}>
                     <Button title="Tạo Khảo Sát" onPress={() => setShowModal(true)} color="#FF6F61" />
                     <Button title="Tạo Lựa chọn Khảo Sát" onPress={() => setShowOptionModal(true)} color="#FF6F61" />

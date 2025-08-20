@@ -114,6 +114,8 @@ class PaymentCategory(BaseModel):
     grace_period = models.IntegerField(default=0)
     category_type = models.CharField(max_length=20, choices=PaymentCategoryType.choices)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True)
+    resident = models.ForeignKey('Resident', on_delete=models.CASCADE, related_name='payment_transactions', null=True,
+                                 blank=True)
 
     def save(self, *args, **kwargs):
         self.total_amount = self.amount + (self.amount * self.tax_percentage / 100)
@@ -139,8 +141,7 @@ class PaymentTransaction(BaseModel):
     category = models.ForeignKey(PaymentCategory, on_delete=models.SET_NULL, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     method = models.CharField(max_length=20, choices=Method.choices)
-    transaction_id = models.CharField(max_length=100, blank=True,
-                                      null=True)
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
     status = models.CharField(max_length=20, default='PENDING')
     payment_proof = CloudinaryField(null=True, blank=True)
     paid_date = models.DateTimeField(null=True, blank=True)

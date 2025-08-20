@@ -71,7 +71,7 @@ const AdminApartmentTransferHistorys = () => {
             style={{ flex: 1 }}
         >
             <View style={MyStyles.containerr}>
-                <Text style={MyStyles.header}>Lịch sử chuyển nhượng căn hộ</Text>
+                <Text style={MyStyles.header}>LỊCH SỬ CHUYỂN NHƯỢNG CĂN HỘ</Text>
 
                 {loading ? (
                     <ActivityIndicator size="large" color="#FF6F61" />
