@@ -25,8 +25,11 @@ SECRET_KEY = 'django-insecure-)b0@!tu5=&x5na4goscy(2e8+zyjs-vnbmwx^dke^b=39qf_zq
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
-
+ALLOWED_HOSTS = ['*',
+                 'https://c899f13fae22.ngrok-free.app']
+CSRF_TRUSTED_ORIGINS = [
+    'https://c899f13fae22.ngrok-free.app',
+]
 
 # Application definition
 
@@ -65,6 +68,8 @@ OAUTH2_PROVIDER = {
     'ALLOW_PASSWORD_GRANT': True,
     'AUTHORIZATION_CODE_EXPIRE_SECONDS': 36000,
     'REFRESH_TOKEN_EXPIRE_SECONDS': 36000,
+    'SCOPES': {'read': 'Read scope', 'write': 'Write scope'},
+    'ALLOWED_GRANT_TYPES': ['password', 'refresh_token'],
     'CLIENT_ID_GENERATOR_CLASS': 'oauth2_provider.generators.ClientIdGenerator',}
 
 import cloudinary

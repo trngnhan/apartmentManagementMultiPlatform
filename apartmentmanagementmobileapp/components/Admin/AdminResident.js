@@ -61,6 +61,7 @@ const AdminResident = () => {
                 const data = res.data;
                 setResidents((prevResidents) => [data, ...prevResidents]);
                 setModalVisible(false);
+                //Xem lại cái này
                 setNewResident({ first_name: "", last_name: "", email: "", user_id: "" });
                 Alert.alert("Thành công", "Cư dân mới đã được thêm.");
             } else {

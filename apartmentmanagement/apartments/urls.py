@@ -2,6 +2,7 @@ from django.urls import path, include
 from . import views
 from rest_framework.routers import DefaultRouter
 
+from .ultis import vnpay_ipn
 from .views import (UserViewSet, ResidentViewSet,
                     ApartmentViewSet, ApartmentTransferHistoryViewSet, PaymentTransactionViewSet,
                     PaymentCategoryViewSet,
@@ -9,9 +10,9 @@ from .views import (UserViewSet, ResidentViewSet,
                     SurveyResponseViewSet, VisitorVehicleRegistrationViewSet, AmenityBookingListViewSet,
                     AmenityViewSet)
 
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import PaymentCategoryViewSet, PaymentTransactionViewSet, momo_ipn
+# from django.urls import path, include
+# from rest_framework.routers import DefaultRouter
+# from .views import PaymentCategoryViewSet, PaymentTransactionViewSet, momo_ipn
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
@@ -31,5 +32,6 @@ router.register(r'amenities', AmenityViewSet, basename='amenition')
 router.register('amenitybookings', AmenityBookingListViewSet, basename='amenitybookings')
 urlpatterns = [
     path('', include(router.urls)),
-    path('paymenttransactions/momo-ipn/', views.momo_ipn, name='momo_ipn'),
+    # path('paymenttransactions/momo-ipn/', views.momo_ipn, name='momo_ipn'),
+    path('vnpay-ipn/', vnpay_ipn, name='vnpay-ipn'),
 ]
