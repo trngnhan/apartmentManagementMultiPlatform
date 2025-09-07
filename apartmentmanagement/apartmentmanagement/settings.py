@@ -83,6 +83,7 @@ cloudinary.config(
     api_secret = "86OzgyvVu_eXX_UjcOrR9EqaFz8",
     secure=True
 )
+CKEDITOR_UPLOAD_PATH = "ckeditor_uploads/"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

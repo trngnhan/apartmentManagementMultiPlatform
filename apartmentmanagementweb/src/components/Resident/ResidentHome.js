@@ -146,7 +146,7 @@ function ResidentHome() {
                     {
                         img: "/assets/survey-feedback-checklist.png",
                         label: "Phản hồi khảo sát",
-                        onClick: () => navigate("/resident/survey-list")
+                        onClick: () => navigate("/resident/surveys")
                     },
                     {
                         img: "/assets/chat-user.png",

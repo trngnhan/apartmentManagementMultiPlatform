@@ -5,6 +5,7 @@ import hashlib
 import logging
 import requests
 from cloudinary.utils import now
+from django.utils import timezone
 
 from decouple import config
 
@@ -268,7 +269,7 @@ class ApartmentViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
             apartment=apartment,
             previous_owner=apartment.owner,
             new_owner=new_owner,
-            transfer_date=now().date(),
+            transfer_date=timezone.now().date(),
             note=note
         )
 
@@ -293,7 +294,8 @@ class ApartmentTransferHistoryViewSet(viewsets.ViewSet, generics.ListCreateAPIVi
     queryset = ApartmentTransferHistory.objects.filter(active=True)
     serializer_class = ApartmentTransferHistorySerializer
     pagination_class = Pagination
-    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]  # Thêm SearchFilter vào đây!
+    search_fields = ['apartment__code', 'previous_owner__email', 'new_owner__email']
     filterset_fields = ['apartment', 'previous_owner', 'new_owner', 'active']
     ordering_fields = ['transfer_date', 'created_date']
 
@@ -998,7 +1000,7 @@ class FeedbackViewSet(viewsets.ViewSet, generics.ListAPIView, generics.DestroyAP
 
 # Survey ViewSet: Phiếu khảo sát: hiển thị phiếu khảo sát và tạo khảo sát
 class SurveyViewSet(viewsets.ViewSet, generics.ListAPIView):
-    queryset = Survey.objects.filter(active=True)
+    queryset = Survey.objects.filter()
     serializer_class = SurveySerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['active']
@@ -1059,6 +1061,16 @@ class SurveyViewSet(viewsets.ViewSet, generics.ListAPIView):
         survey = self.get_object()
         responses = SurveyResponse.objects.filter(survey=survey)
         return Response(SurveyResponseSerializer(responses, many=True).data)
+
+    @action(methods=['patch'], detail=True, url_path='set-active')
+    def set_active(self, request, pk=None):
+        survey = self.get_object()
+        active = request.data.get("active")
+        if active is None:
+            return Response({"error": "Thiếu trường active."}, status=status.HTTP_400_BAD_REQUEST)
+        survey.active = bool(active)
+        survey.save()
+        return Response({"id": survey.id, "active": survey.active})
 
 
 # Survey Option ViewSet: Hiển thị các lựa chọn và tạo các lựa chọn trong khảo sát
@@ -1244,6 +1256,13 @@ class AmenityBookingListViewSet(viewsets.ViewSet, generics.RetrieveUpdateAPIView
         bookings = AmenityBooking.objects.filter(amenity_id=pk)
         serializer = self.serializer_class(bookings, many=True)
         return Response(serializer.data)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        resident_id = self.request.query_params.get('resident')
+        if resident_id:
+            queryset = queryset.filter(resident_id=resident_id)
+        return queryset
 
     @action(methods=['patch'], detail=True, url_path='set-status')
     def set_status(self, request, pk=None):

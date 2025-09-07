@@ -1,6 +1,7 @@
 import axios from "axios";
+import { set } from "firebase/database";
 
-const BASE_URL = "http://192.168.1.11:8000/";
+const BASE_URL = "http://192.168.1.20:8000/";
 
 export const endpoints = {
     login: "/o/token/",
@@ -25,6 +26,7 @@ export const endpoints = {
     surveys: "/surveys/",
     surveyResponses: "/surveyresponses/",
     mySurveyResponses: "/surveyresponses/my-responses/",
+    setSurveyActive: (id) => `/surveys/${id}/set-active/`,
 
     countResident: "/residents/count-resident/",
     totalApartments: "/apartments/total-apartments/",

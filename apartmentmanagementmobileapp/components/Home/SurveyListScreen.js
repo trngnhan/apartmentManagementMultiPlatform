@@ -68,13 +68,9 @@ const SurveyListScreen = () => {
 
     const submitResponse = async (surveyId, optionId) => {
         try {
-            const res = await fetch("http://192.168.44.103:8000/surveyresponses/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ survey: surveyId, option: optionId }),
+            const res = await api.post(endpoints.surveyResponses || "/surveyresponses/", {
+                survey: surveyId,
+                option: optionId,
             });
 
             if (res.ok) {

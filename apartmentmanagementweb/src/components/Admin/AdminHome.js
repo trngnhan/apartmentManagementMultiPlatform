@@ -5,6 +5,7 @@ const adminFeatures = [
     { label: "Quản lý tài khoản", img: "/assets/user.png", path: "/admin/accounts" },
     { label: "Quản lý cư dân", img: "/assets/resident.png", path: "/admin/residents" },
     { label: "Quản lý căn hộ", img: "/assets/apartment.png", path: "/admin/apartments" },
+    { label: "Quản lý chuyển nhượng căn hộ", img: "/assets/apartment-transfer-historys.png", path: "/admin/apartment-transfer-historys" },
     { label: "Quản lý khảo sát", img: "/assets/survey.png", path: "/admin/surveys" },
     { label: "Quản lý phản ánh", img: "/assets/feedback.png", path: "/admin/feedbacks" },
     { label: "Quản lý tiện ích", img: "/assets/admin-amenity.png", path: "/admin/amenities" },

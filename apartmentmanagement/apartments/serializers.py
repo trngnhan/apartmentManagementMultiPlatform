@@ -96,6 +96,16 @@ class ApartmentTransferHistorySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['created_date', 'updated_date']
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Đảm bảo transfer_date luôn là chuỗi ngày hợp lệ
+        transfer_date = data.get('transfer_date')
+        if isinstance(transfer_date, str):
+            data['transfer_date'] = transfer_date  # đã là chuỗi, giữ nguyên
+        elif hasattr(instance.transfer_date, 'isoformat'):
+            data['transfer_date'] = instance.transfer_date.isoformat()
+        return data
+
 
 # Payment Category Serializer
 class PaymentCategorySerializer(serializers.ModelSerializer):
@@ -222,7 +232,7 @@ class SurveySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Survey
-        fields = ['id', 'title', 'description', 'deadline', 'options', 'created_date', 'updated_date']
+        fields = ['id', 'title', 'description', 'deadline', 'options', 'created_date', 'updated_date', 'active']
         read_only_fields = ['created_date', 'updated_date']
 
     def create(self, validated_data):

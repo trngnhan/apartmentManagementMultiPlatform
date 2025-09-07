@@ -4,6 +4,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from cloudinary.models import CloudinaryField
 from datetime import datetime
+from django.utils import timezone
 import calendar
 
 # Base Model
@@ -87,7 +88,7 @@ class ApartmentTransferHistory(BaseModel):
     apartment = models.ForeignKey(Apartment, on_delete=models.CASCADE, related_name='transfer_history')
     previous_owner = models.ForeignKey(Resident, on_delete=models.SET_NULL, null=True, related_name='previous_apartment_owners')
     new_owner = models.ForeignKey(Resident, on_delete=models.SET_NULL, null=True, related_name='new_apartment_owners')
-    transfer_date = models.DateField(default=datetime.now)
+    transfer_date = models.DateField(default=timezone.now)
     note = models.TextField(blank=True, null=True)
 
 # Payment Category: định nghĩa, quản lý các loại phí
@@ -194,6 +195,12 @@ class Survey(BaseModel):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     deadline = models.DateTimeField()
+
+    def save(self, *args, **kwargs):
+        # Nếu đã hết hạn và active vẫn đang True thì tắt active
+        if self.active and self.deadline and self.deadline < timezone.now():
+            self.active = False
+        super().save(*args, **kwargs)
 
 class SurveyOption(BaseModel):
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, related_name='options')
