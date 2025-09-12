@@ -6,6 +6,7 @@ from cloudinary.models import CloudinaryField
 from datetime import datetime
 from django.utils import timezone
 import calendar
+from django import forms
 
 # Base Model
 class BaseModel(models.Model):
@@ -254,3 +255,11 @@ class AmenityBooking(BaseModel):
     def __str__(self):
         return (f"Cư dân: {self.resident.user.first_name} {self.resident.user.last_name} - "
                 f"đăng ký {self.amenity.name} - ngày {self.booking_date}")
+
+class PaymentForm(forms.Form):
+    order_id = forms.CharField(max_length=250)
+    order_type = forms.CharField(max_length=20)
+    amount = forms.IntegerField()
+    order_desc = forms.CharField(max_length=100)
+    bank_code = forms.CharField(max_length=20, required=False)
+    language = forms.CharField(max_length=2)

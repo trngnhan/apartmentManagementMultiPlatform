@@ -1,31 +1,14 @@
-import json
-import time
-import hmac
-import hashlib
 import logging
-import requests
 from cloudinary.utils import now
-from django.utils import timezone
-
-from decouple import config
-
-from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse
-from django.contrib import messages
 from django.contrib.auth import (
     authenticate, login, update_session_auth_hash, get_user_model
 )
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
 from django.utils import timezone
 
 from rest_framework import viewsets, generics, permissions, status, parsers
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, NotFound
-from rest_framework.generics import CreateAPIView
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.exceptions import NotFound
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
@@ -41,7 +24,7 @@ from .pagination import Pagination
 from .models import (
     Resident, Apartment, ApartmentTransferHistory, PaymentCategory,
     PaymentTransaction, ParcelLocker, ParcelItem,
-    Feedback, Survey, SurveyOption, SurveyResponse, VisitorVehicleRegistration, AmenityBooking, Amenity
+    Feedback, Survey, SurveyOption, SurveyResponse, VisitorVehicleRegistration, AmenityBooking, Amenity, PaymentForm
 )
 from .serializers import PaymentCategorySerializer, PaymentTransactionSerializer, AmenityBookingSerializer, \
     AmenitySerializer
@@ -52,9 +35,17 @@ from apartments.serializers import (
     FeedbackSerializer, SurveySerializer, SurveyOptionSerializer, SurveyResponseSerializer,
     VisitorVehicleRegistrationSerializer
 )
-from .ultis import create_vnpay_payment
-from urllib.parse import quote
+from django.db import transaction
+import hashlib
+import hmac
+import json
+import random
+import requests
 from datetime import datetime
+from django.conf import settings
+from django.http import JsonResponse
+from django.shortcuts import render, redirect
+from .vnpay import vnpay
 
 logger = logging.getLogger(__name__)
 
@@ -344,11 +335,6 @@ class ApartmentTransferHistoryViewSet(viewsets.ViewSet, generics.ListCreateAPIVi
 
         return Response(ApartmentTransferHistorySerializer(transfer_history).data, status=status.HTTP_201_CREATED)
 
-# class IsAdminOrManagement(IsAuthenticated):
-#     def has_permission(self, request, view):
-#         return request.user.is_authenticated and (request.user.is_staff or
-#                 request.user.groups.filter(name='Management').exists())
-
 # Payment Category ViewSet
 class PaymentCategoryViewSet(viewsets.ViewSet, generics.ListCreateAPIView, generics.UpdateAPIView):
     queryset = PaymentCategory.objects.filter()
@@ -431,61 +417,28 @@ class PaymentTransactionViewSet(viewsets.GenericViewSet, generics.ListAPIView):
                 status='PENDING'
             )
 
-            # Tạo link thanh toán VNPay
-            vnp_TmnCode = "NFH6F3I6"
-            vnp_HashSecret = "XK7MMIZRA242ARIWNKOYK8J1IRFM69DX"
-            vnp_Url = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
-            return_url = "https://c899f13fae22.ngrok-free.app/payment-return"
+            vnp = vnpay()
+            vnp.requestData['vnp_Version'] = '2.1.0'
+            vnp.requestData['vnp_Command'] = 'pay'
+            vnp.requestData['vnp_TmnCode'] = settings.VNPAY_TMN_CODE
+            vnp.requestData['vnp_Amount'] = int(category.total_amount * 100)
+            vnp.requestData['vnp_CurrCode'] = 'VND'
+            vnp.requestData['vnp_TxnRef'] = str(transaction.id)
+            vnp.requestData['vnp_OrderInfo'] = f"Thanh toan phi {category.name}"
+            vnp.requestData['vnp_OrderType'] = 'apartment_Fee'
+            vnp.requestData['vnp_Locale'] = 'vn'
+            vnp.requestData['vnp_CreateDate'] = datetime.now().strftime('%Y%m%d%H%M%S')
+            vnp.requestData['vnp_IpAddr'] = get_client_ip(request)
+            vnp.requestData['vnp_ReturnUrl'] = settings.VNPAY_RETURN_URL
 
-            vnp_Params = {
-                'vnp_Version': '2.1.0',
-                'vnp_Command': 'pay',
-                'vnp_TmnCode': vnp_TmnCode,
-                'vnp_Amount': str(int(category.total_amount) * 100),
-                'vnp_CurrCode': 'VND',
-                'vnp_TxnRef': str(transaction.id),
-                'vnp_OrderInfo': f"Thanh toan phi {category.name}",
-                'vnp_OrderType': 'other',
-                'vnp_Locale': 'vn',
-                'vnp_ReturnUrl': return_url,
-                'vnp_IpAddr': '127.0.0.1',
-                'vnp_CreateDate': datetime.now().strftime('%Y%m%d%H%M%S'),
-            }
-
-            sorted_params = sorted(vnp_Params.items())
-            hashdata = '&'.join([f"{k}={v}" for k, v in sorted_params])
-            secure_hash = hmac.new(
-                bytes(vnp_HashSecret, 'utf-8'),
-                bytes(hashdata, 'utf-8'),
-                hashlib.sha512
-            ).hexdigest()
-            query_string = '&'.join([f"{k}={quote(str(v), safe='')}" for k, v in sorted_params])
-            pay_url = f"{vnp_Url}?{query_string}&vnp_SecureHash={secure_hash}"
-
-            print(pay_url)
-            print(hashdata)
-            print(secure_hash)
-
-            hashdata = "vnp_Amount=10000000&vnp_Command=pay&vnp_CreateDate=20250826012010&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh toan phi Phi tien ich chung cu&vnp_OrderType=other&vnp_ReturnUrl=https://c899f13fae22.ngrok-free.app/payment-return&vnp_TmnCode=NFH6F3I6&vnp_TxnRef=73&vnp_Version=2.1.0"
-            secret = "XK7MMIZRA242ARIWNKOYK8J1IRFM69DX"
-
-            secure_hash = hmac.new(
-                bytes(secret, 'utf-8'),
-                bytes(hashdata, 'utf-8'),
-                hashlib.sha512
-            ).hexdigest()
-
-            print("1111111111", secure_hash)
+            vnpay_payment_url = vnp.get_payment_url(settings.VNPAY_PAYMENT_URL, settings.VNPAY_HASH_SECRET_KEY)
 
             return Response({
-                "vnpay_response": {
-                    "payUrl": pay_url
-                },
-                "transaction": {
-                    "transaction_id": transaction.id
-                }
+                "payment_url": vnpay_payment_url,
+                "amount": category.total_amount,
+                "transaction_id": transaction.id,
+                "message": "Vui lòng thanh toán qua VNPay."
             }, status=status.HTTP_200_OK)
-
         except Resident.DoesNotExist:
             return Response({"detail": "Tài khoản không phải cư dân."}, status=status.HTTP_400_BAD_REQUEST)
         except PaymentCategory.DoesNotExist:
@@ -507,94 +460,6 @@ class PaymentTransactionViewSet(viewsets.GenericViewSet, generics.ListAPIView):
         except PaymentTransaction.DoesNotExist:
             logger.error(f"Transaction {transaction_id} not found for user {request.user.username}")
             return Response({"detail": "Không tìm thấy giao dịch"}, status=status.HTTP_404_NOT_FOUND)
-
-    # @action(methods=['post'], detail=True, url_path='create-momo-payment')
-    # def create_momo_payment(self, request, pk=None):
-    #     try:
-    #         category = PaymentCategory.objects.get(pk=pk, active=True)
-    #         resident = Resident.objects.get(user=request.user)
-    #         apartment = Apartment.objects.get(owner=resident)
-    #
-    #         if category.is_recurring and category.frequency == 'MONTHLY':
-    #             if PaymentTransaction.objects.filter(
-    #                     apartment=apartment, category=category, status='COMPLETED',
-    #                     paid_date__year=timezone.now().year,
-    #                     paid_date__month=timezone.now().month
-    #             ).exists():
-    #                 return Response(
-    #                     {"detail": "Khoản phí này đã được thanh toán cho chu kỳ hiện tại."},
-    #                     status=status.HTTP_400_BAD_REQUEST
-    #                 )
-    #
-    #         # MoMo configuration
-    #         partner_code = "MOMO"
-    #         order_id = f"{partner_code}{int(time.time() * 1000)}"
-    #         access_key = config('MOMO_ACCESS_KEY', default='F8BBA842ECF85')
-    #         secret_key = config('MOMO_SECRET_KEY', default='K951B6PE1waDMi640xX08PD3vg6EkVlz')
-    #         redirect_url = "https://515a-171-243-49-232.ngrok-free.app"
-    #         ipn_url = "https://515a-171-243-49-232.ngrok-free.app/paymenttransactions/momo-ipn/"
-    #         amount = str(int(category.amount))
-    #         order_info = f"Thanh toán {category.name}"
-    #
-    #         raw_signature = (
-    #             f"accessKey={access_key}&amount={amount}&extraData=&"
-    #             f"ipnUrl={ipn_url}&orderId={order_id}&orderInfo={order_info}"
-    #             f"&partnerCode={partner_code}&redirectUrl={redirect_url}"
-    #             f"&requestId={order_id}&requestType=captureWallet"
-    #         )
-    #         signature = hmac.new(
-    #             key=secret_key.encode('utf-8'),
-    #             msg=raw_signature.encode('utf-8'),
-    #             digestmod=hashlib.sha256
-    #         ).hexdigest()
-    #
-    #         request_body = {
-    #             "partnerCode": partner_code,
-    #             "partnerName": "Test",
-    #             "storeId": "MomoTestStore",
-    #             "requestId": order_id,
-    #             "amount": amount,
-    #             "orderId": order_id,
-    #             "orderInfo": order_info,
-    #             "redirectUrl": redirect_url,
-    #             "ipnUrl": ipn_url,
-    #             "lang": "vi",
-    #             "requestType": "captureWallet",
-    #             "extraData": "",
-    #             "signature": signature
-    #         }
-    #
-    #         response = requests.post(
-    #             "https://test-payment.momo.vn/v2/gateway/api/create",
-    #             headers={"Content-Type": "application/json"},
-    #             json=request_body,
-    #             timeout=30
-    #         )
-    #         response.raise_for_status()
-    #         momo_response = response.json()
-    #
-    #         if not momo_response.get('qrCodeUrl'):
-    #             logger.error("No qrCodeUrl in MoMo response")
-    #             return Response({"detail": "MoMo API không trả về QR Code"},
-    #                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    #
-    #         transaction = PaymentTransaction.objects.create(
-    #             apartment=apartment, category=category, amount=category.amount,
-    #             method=PaymentTransaction.Method.MOMO, transaction_id=order_id, status='PENDING'
-    #         )
-    #
-    #         return Response({
-    #         "transaction": PaymentTransactionSerializer(transaction).data,
-    #         "momo_response": momo_response
-    #         }, status = status.HTTP_200_OK)
-    #
-    #     except PaymentCategory.DoesNotExist:
-    #         return Response({"detail": "Không tìm thấy loại phí"}, status=status.HTTP_404_NOT_FOUND)
-    #     except Apartment.DoesNotExist:
-    #         return Response({"detail": "Người dùng không sở hữu căn hộ nào."}, status=status.HTTP_400_BAD_REQUEST)
-    #     except requests.RequestException as e:
-    #         logger.error(f"MoMo API error: {str(e)}")
-    #         return Response({"detail": f"Lỗi khi gọi MoMo API: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(methods=['post'], detail=False, url_path='update-status')
     def update_status(self, request):
@@ -643,145 +508,107 @@ class PaymentTransactionViewSet(viewsets.GenericViewSet, generics.ListAPIView):
         serializer = self.get_serializer(payments, many=True)
         return Response(serializer.data)
 
-# @csrf_exempt
-# @require_POST
-# def momo_ipn(request):
-#     try:
-#         data = json.loads(request.body)
-#         secret_key = config('MOMO_SECRET_KEY', default='K951B6PE1waDMi640xX08PD3vg6EkVlz')
-#         required_fields = ['partnerCode', 'orderId', 'requestId', 'amount', 'resultCode', 'signature']
-#
-#         if not all(field in data for field in required_fields):
-#             logger.error(f"Missing required fields in IPN data: {data}")
-#             return JsonResponse({"message": "Dữ liệu không đầy đủ"}, status=400)
+class VNPayViewSet(viewsets.ViewSet):
+    @transaction.atomic
+    @action(detail=False, methods=['get'], url_path='vnpay-return')
+    def vnpay_return(self, request):
+        inputData = request.GET
+        if not inputData:
+            return render(request, "payment_return.html", {"title": "Kết quả thanh toán", "result": ""})
 
-        # raw_signature = (
-        #     f"accessKey={data.get('accessKey')}&amount={data.get('amount')}&"
-        #     f"extraData={data.get('extraData')}&message={data.get('message')}&"
-        #     f"orderId={data.get('orderId')}&orderInfo={data.get('orderInfo')}&"
-        #     f"orderType={data.get('orderType')}&partnerCode={data.get('partnerCode')}&"
-        #     f"payType={data.get('payType')}&requestId={data.get('requestId')}&"
-        #     f"responseTime={data.get('responseTime')}&resultCode={data.get('resultCode')}&"
-        #     f"transId={data.get('transId')}"
-        # )
-        # signature = hmac.new(
-        #     key=secret_key.encode('utf-8'),
-        #     msg=raw_signature.encode('utf-8'),
-        #     digestmod=hashlib.sha256
-        # ).hexdigest()
+        vnp = vnpay()
+        vnp.responseData = inputData.dict()
+        order_id = inputData.get('vnp_TxnRef')
+        amount = int(inputData.get('vnp_Amount', 0)) / 100
+        order_desc = inputData.get('vnp_OrderInfo', '')
+        vnp_TransactionNo = inputData.get('vnp_TransactionNo', '')
+        vnp_ResponseCode = inputData.get('vnp_ResponseCode', '')
+        vnp_TmnCode = inputData.get('vnp_TmnCode', '')
+        vnp_PayDate = inputData.get('vnp_PayDate', '')
+        vnp_BankCode = inputData.get('vnp_BankCode', '')
+        vnp_CardType = inputData.get('vnp_CardType', '')
 
-    #     access_key = config('MOMO_ACCESS_KEY', default='F8BBA842ECF85')
-    #     secret_key = config('MOMO_SECRET_KEY', default='K951B6PE1waDMi640xX08PD3vg6EkVlz')
-    #
-    #     raw_signature = (
-    #         f"accessKey={access_key}&amount={data.get('amount')}&"
-    #         f"extraData={data.get('extraData')}&message={data.get('message')}&"
-    #         f"orderId={data.get('orderId')}&orderInfo={data.get('orderInfo')}&"
-    #         f"orderType={data.get('orderType')}&partnerCode={data.get('partnerCode')}&"
-    #         f"payType={data.get('payType')}&requestId={data.get('requestId')}&"
-    #         f"responseTime={data.get('responseTime')}&resultCode={data.get('resultCode')}&"
-    #         f"transId={data.get('transId')}"
-    #     )
-    #     signature = hmac.new(
-    #         key=secret_key.encode('utf-8'),
-    #         msg=raw_signature.encode('utf-8'),
-    #         digestmod=hashlib.sha256
-    #     ).hexdigest()
-    #
-    #     if signature != data.get('signature'):
-    #         logger.error(f"Invalid signature for order {data.get('orderId')}")
-    #         return JsonResponse({"message": "Chữ ký không hợp lệ"}, status=400)
-    #
-    #     try:
-    #         transaction = PaymentTransaction.objects.get(transaction_id=data.get('orderId'))
-    #         transaction.status = 'COMPLETED' if str(data.get('resultCode')) == '0' else 'FAILED'
-    #         if transaction.status == 'COMPLETED':
-    #             transaction.paid_date = timezone.now()
-    #         transaction.save()
-    #         logger.info(f"Transaction {transaction.transaction_id} updated to {transaction.status}")
-    #         return JsonResponse({"message": "IPN nhận thành công"}, status=200)
-    #     except PaymentTransaction.DoesNotExist:
-    #         logger.error(f"Transaction not found for orderId: {data.get('orderId')}")
-    #         return JsonResponse({"message": "Giao dịch không tồn tại"}, status=404)
-    # except json.JSONDecodeError:
-    #     logger.error("Invalid JSON in IPN request")
-    #     return JsonResponse({"message": "Dữ liệu JSON không hợp lệ"}, status=400)
-    # except Exception as e:
-    #     logger.error(f"IPN error: {str(e)}")
-    #     return JsonResponse({"message": f"Lỗi server: {str(e)}"}, status=500)
-    #
-    # @action(methods=['get'], detail=False, url_path='check-payment-status')
-    # def check_payment_status(self, request):
-    #     transaction_id = request.query_params.get('transaction_id') or request.query_params.get('order_id')
-    #     if not transaction_id:
-    #         logger.error("Missing transaction_id or order_id")
-    #         return Response({"detail": "Vui lòng cung cấp transaction_id hoặc order_id"},
-    #                         status=status.HTTP_400_BAD_REQUEST)
-    #
-    #     try:
-    #         transaction = PaymentTransaction.objects.get(transaction_id=transaction_id)
-    #         if transaction.status == 'PENDING':
-    #             momo_response = self._check_momo_transaction_status(transaction.transaction_id)
-    #             transaction.status = 'COMPLETED' if momo_response.get('resultCode') == '0' else 'FAILED'
-    #             if transaction.status == 'COMPLETED':
-    #                 transaction.paid_date = timezone.now()
-    #             transaction.save()
-    #             logger.info(f"Transaction {transaction.transaction_id} updated to {transaction.status}")
-    #
-    #         response_data = {
-    #             "transaction_id": transaction.transaction_id,
-    #             "status": transaction.status,
-    #             "amount": str(transaction.amount),
-    #             "paid_date": transaction.paid_date.isoformat() if transaction.paid_date else None,
-    #             "category": transaction.category.name if transaction.category else None,
-    #             "method": transaction.method
-    #         }
-    #         logger.info(f"Payment status checked for {transaction.transaction_id}: {transaction.status}")
-    #         return Response(response_data, status=status.HTTP_200_OK)
-    #
-    #     except PaymentTransaction.DoesNotExist:
-    #         logger.error(f"Transaction not found for {transaction_id}")
-    #         return Response({"detail": "Không tìm thấy giao dịch"}, status=status.HTTP_404_NOT_FOUND)
-    #     except requests.RequestException as e:
-    #         logger.error(f"MoMo status check failed for {transaction_id}: {str(e)}")
-    #         return Response({"detail": f"Không thể kiểm tra trạng thái với MoMo: {str(e)}"},
-    #                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    #
-    # def _check_momo_transaction_status(self, order_id):
-    #     partner_code = "MOMO"
-    #     access_key = config('MOMO_ACCESS_KEY', default='F8BBA842ECF85')
-    #     secret_key = config('MOMO_SECRET_KEY', default='K951B6PE1waDMi640xX08PD3vg6EkVlz')
-    #     request_id = f"{partner_code}{int(time.time() * 1000)}"
-    #
-    #     raw_signature = (
-    #         f"accessKey={access_key}&orderId={order_id}&"
-    #         f"partnerCode={partner_code}&requestId={request_id}"
-    #     )
-    #     signature = hmac.new(
-    #         key=secret_key.encode('utf-8'),
-    #         msg=raw_signature.encode('utf-8'),
-    #         digestmod=hashlib.sha256
-    #     ).hexdigest()
-    #
-    #     request_body = {
-    #         "partnerCode": partner_code,
-    #         "requestId": request_id,
-    #         "orderId": order_id,
-    #         "signature": signature,
-    #         "lang": "vi"
-    #     }
-    #
-    #     response = requests.post(
-    #         "https://test-payment.momo.vn/v2/gateway/api/query",
-    #         headers={"Content-Type": "application/json"},
-    #         json=request_body,
-    #         timeout=30
-    #     )
-    #     response.raise_for_status()
-    #     logger.info(f"MoMo status check response for {order_id}: {response.json()}")
-    #     return response.json()
+        # Đổi 'pending' thành 'PENDING' cho đúng với DB
+        STATUS_PENDING = 'PENDING'
 
-# Parcel Locker ViewSet
+        # Kiểm tra checksum
+        if not vnp.validate_response(settings.VNPAY_HASH_SECRET_KEY):
+            try:
+                payment_log = PaymentTransaction.objects.get(id=order_id, status=STATUS_PENDING)
+                payment_log.status = 'FAILED'
+                payment_log.transaction_id = vnp_TransactionNo
+                payment_log.save()
+            except PaymentTransaction.DoesNotExist:
+                pass
+            return render(request, "payment_return.html", {
+                "title": "Kết quả thanh toán",
+                "result": "Lỗi",
+                "order_id": order_id,
+                "amount": amount,
+                "order_desc": order_desc,
+                "vnp_TransactionNo": vnp_TransactionNo,
+                "vnp_ResponseCode": vnp_ResponseCode,
+                "msg": "Sai checksum",
+            })
+
+        if vnp_ResponseCode != "00":
+            try:
+                payment_log = PaymentTransaction.objects.get(id=order_id, status=STATUS_PENDING)
+                payment_log.status = 'FAILED'
+                payment_log.transaction_id = vnp_TransactionNo
+                payment_log.save()
+            except PaymentTransaction.DoesNotExist:
+                pass
+            return render(request, "payment_return.html", {
+                "title": "Kết quả thanh toán",
+                "result": "Lỗi",
+                "order_id": order_id,
+                "amount": amount,
+                "order_desc": order_desc,
+                "vnp_TransactionNo": vnp_TransactionNo,
+                "vnp_ResponseCode": vnp_ResponseCode
+            })
+
+        try:
+            with transaction.atomic():
+                payment_log = PaymentTransaction.objects.get(id=order_id, status=STATUS_PENDING)
+                payment_log.status = 'COMPLETED'
+                payment_log.transaction_id = vnp_TransactionNo
+                payment_log.save()
+        except PaymentTransaction.DoesNotExist:
+            print(f"[VNPay] Không tìm thấy đơn hàng id={order_id}, status={STATUS_PENDING}")
+            all_logs = PaymentTransaction.objects.filter(id=order_id)
+            print(f"[VNPay] Các bản ghi có id={order_id}: {[ (x.id, x.status) for x in all_logs ]}")
+            return render(request, "payment_return.html", {
+                "title": "Kết quả thanh toán",
+                "result": "Đơn hàng không tồn tại hoặc đã được xử lý",
+                "order_id": order_id,
+                "amount": amount,
+                "order_desc": order_desc,
+                "vnp_TransactionNo": vnp_TransactionNo,
+                "vnp_ResponseCode": vnp_ResponseCode,
+            })
+        except Exception as e:
+            return render(request, "payment_return.html", {
+                "title": "Kết quả thanh toán",
+                "result": "Lỗi khi cập nhật trạng thái giao dịch",
+                "order_id": order_id,
+                "amount": amount,
+                "order_desc": order_desc,
+                "vnp_TransactionNo": vnp_TransactionNo,
+                "vnp_ResponseCode": vnp_ResponseCode,
+                "msg": str(e)
+            })
+        return render(request, "payment_return.html", {
+            "title": "Kết quả thanh toán",
+            "result": "Thành công",
+            "order_id": order_id,
+            "amount": amount,
+            "order_desc": order_desc,
+            "vnp_TransactionNo": vnp_TransactionNo,
+            "vnp_ResponseCode": vnp_ResponseCode,
+        })
+
 class ParcelLockerViewSet(viewsets.ViewSet, generics.ListCreateAPIView, generics.DestroyAPIView):
     queryset = ParcelLocker.objects.filter(active=True)
     serializer_class = ParcelLockerSerializer
@@ -1286,3 +1113,276 @@ class AmenityBookingListViewSet(viewsets.ViewSet, generics.RetrieveUpdateAPIView
         booking.save()
         serializer = self.get_serializer(booking)
         return Response(serializer.data)
+
+
+def index(request):
+    return render(request, "index.html", {"title": "Danh sách demo"})
+
+
+def hmacsha512(key, data):
+    byteKey = key.encode('utf-8')
+    byteData = data.encode('utf-8')
+    return hmac.new(byteKey, byteData, hashlib.sha512).hexdigest()
+
+
+def payment(request):
+    if request.method == 'POST':
+        # Process input data and build url payment
+        form = PaymentForm(request.POST)
+        if form.is_valid():
+            order_type = form.cleaned_data['order_type']
+            order_id = form.cleaned_data['order_id']
+            amount = form.cleaned_data['amount']
+            order_desc = form.cleaned_data['order_desc']
+            bank_code = form.cleaned_data['bank_code']
+            language = form.cleaned_data['language']
+            ipaddr = get_client_ip(request)
+            # Build URL Payment
+            vnp = vnpay()
+            vnp.requestData['vnp_Version'] = '2.1.0'
+            vnp.requestData['vnp_Command'] = 'pay'
+            vnp.requestData['vnp_TmnCode'] = settings.VNPAY_TMN_CODE
+            vnp.requestData['vnp_Amount'] = amount * 100
+            vnp.requestData['vnp_CurrCode'] = 'VND'
+            vnp.requestData['vnp_TxnRef'] = order_id
+            vnp.requestData['vnp_OrderInfo'] = order_desc
+            vnp.requestData['vnp_OrderType'] = order_type
+            # Check language, default: vn
+            if language and language != '':
+                vnp.requestData['vnp_Locale'] = language
+            else:
+                vnp.requestData['vnp_Locale'] = 'vn'
+            # Check bank_code, if bank_code is empty, customer will be selected bank on VNPAY
+            # if bank_code:
+            #     vnp.requestData['vnp_BankCode'] = bank_code
+
+            if bank_code and bank_code != "":
+                vnp.requestData['vnp_BankCode'] = bank_code
+
+            vnp.requestData['vnp_CreateDate'] = datetime.now().strftime('%Y%m%d%H%M%S')
+            vnp.requestData['vnp_IpAddr'] = ipaddr
+            vnp.requestData['vnp_ReturnUrl'] = settings.VNPAY_RETURN_URL
+            vnpay_payment_url = vnp.get_payment_url(settings.VNPAY_PAYMENT_URL, settings.VNPAY_HASH_SECRET_KEY)
+            print(vnpay_payment_url)
+            # Redirect to VNPAY
+            return redirect(vnpay_payment_url)
+        else:
+            print("Form input not validate")
+    return render(request, "payment.html", {"title": "Thanh toán"})
+
+
+def payment_ipn(request):
+    inputData = request.GET
+    if inputData:
+        vnp = vnpay()
+        vnp.responseData = inputData.dict()
+        order_id = inputData['vnp_TxnRef']
+        amount = inputData['vnp_Amount']
+        order_desc = inputData['vnp_OrderInfo']
+        vnp_TransactionNo = inputData['vnp_TransactionNo']
+        vnp_ResponseCode = inputData['vnp_ResponseCode']
+        vnp_TmnCode = inputData['vnp_TmnCode']
+        vnp_PayDate = inputData['vnp_PayDate']
+        vnp_BankCode = inputData['vnp_BankCode']
+        vnp_CardType = inputData['vnp_CardType']
+        if vnp.validate_response(settings.VNPAY_HASH_SECRET_KEY):
+            # Check & Update Order Status in your Database
+            # Your code here
+            firstTimeUpdate = True
+            totalamount = True
+            if totalamount:
+                if firstTimeUpdate:
+                    if vnp_ResponseCode == '00':
+                        print('Payment Success. Your code implement here')
+                    else:
+                        print('Payment Error. Your code implement here')
+
+                    # Return VNPAY: Merchant update success
+                    result = JsonResponse({'RspCode': '00', 'Message': 'Confirm Success'})
+                else:
+                    # Already Update
+                    result = JsonResponse({'RspCode': '02', 'Message': 'Order Already Update'})
+            else:
+                # invalid amount
+                result = JsonResponse({'RspCode': '04', 'Message': 'invalid amount'})
+        else:
+            # Invalid Signature
+            result = JsonResponse({'RspCode': '97', 'Message': 'Invalid Signature'})
+    else:
+        result = JsonResponse({'RspCode': '99', 'Message': 'Invalid request'})
+
+    return result
+
+
+def payment_return(request):
+    inputData = request.GET
+    if inputData:
+        vnp = vnpay()
+        vnp.responseData = inputData.dict()
+        order_id = inputData.get('vnp_TxnRef', '')
+        amount = int(inputData.get('vnp_Amount', 0)) / 100
+        order_desc = inputData.get('vnp_OrderInfo', '')
+        vnp_TransactionNo = inputData.get('vnp_TransactionNo', '')
+        vnp_ResponseCode = inputData.get('vnp_ResponseCode', '')  # Có thể rỗng!
+        vnp_TransactionStatus = inputData.get('vnp_TransactionStatus', '')  # Luôn có!
+        vnp_TmnCode = inputData.get('vnp_TmnCode', '')
+        vnp_PayDate = inputData.get('vnp_PayDate', '')
+        vnp_BankCode = inputData.get('vnp_BankCode', '')
+        vnp_CardType = inputData.get('vnp_CardType', '')
+        print("VNPay return data:", inputData)
+        if vnp.validate_response(settings.VNPAY_HASH_SECRET_KEY):
+            # Ưu tiên kiểm tra TransactionStatus nếu thiếu ResponseCode
+            if vnp_ResponseCode == "00" or vnp_TransactionStatus == "00":
+                try:
+                    payment_log = PaymentTransaction.objects.get(id=order_id)
+                    payment_log.status = 'COMPLETED'
+                    payment_log.transaction_id = vnp_TransactionNo
+                    payment_log.paid_date = timezone.now()
+                    payment_log.save()
+                except PaymentTransaction.DoesNotExist:
+                    pass  # Có thể log lỗi nếu cần
+                result = "Thành công"
+            else:
+                result = "Lỗi"
+            return render(request, "payment_return.html", {
+                "title": "Kết quả thanh toán",
+                "result": result,
+                "order_id": order_id,
+                "amount": amount,
+                "order_desc": order_desc,
+                "vnp_TransactionNo": vnp_TransactionNo,
+                "vnp_ResponseCode": vnp_ResponseCode or vnp_TransactionStatus
+            })
+        else:
+            return render(request, "payment_return.html", {
+                "title": "Kết quả thanh toán",
+                "result": "Lỗi",
+                "order_id": order_id,
+                "amount": amount,
+                "order_desc": order_desc,
+                "vnp_TransactionNo": vnp_TransactionNo,
+                "vnp_ResponseCode": vnp_ResponseCode or vnp_TransactionStatus,
+                "msg": "Sai checksum"
+            })
+    else:
+        return render(request, "payment_return.html", {"title": "Kết quả thanh toán", "result": ""})
+
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+n = random.randint(10**11, 10**12 - 1)
+n_str = str(n)
+while len(n_str) < 12:
+    n_str = '0' + n_str
+
+
+def query(request):
+    if request.method == 'GET':
+        return render(request, "query.html", {"title": "Kiểm tra kết quả giao dịch"})
+
+    url = settings.VNPAY_API_URL
+    secret_key = settings.VNPAY_HASH_SECRET_KEY
+    vnp_TmnCode = settings.VNPAY_TMN_CODE
+    vnp_Version = '2.1.0'
+
+    vnp_RequestId = n_str
+    vnp_Command = 'querydr'
+    vnp_TxnRef = request.POST['order_id']
+    vnp_OrderInfo = 'kiem tra gd'
+    vnp_TransactionDate = request.POST['trans_date']
+    vnp_CreateDate = datetime.now().strftime('%Y%m%d%H%M%S')
+    vnp_IpAddr = get_client_ip(request)
+
+    hash_data = "|".join([
+        vnp_RequestId, vnp_Version, vnp_Command, vnp_TmnCode,
+        vnp_TxnRef, vnp_TransactionDate, vnp_CreateDate,
+        vnp_IpAddr, vnp_OrderInfo
+    ])
+
+    secure_hash = hmac.new(secret_key.encode(), hash_data.encode(), hashlib.sha512).hexdigest()
+
+    data = {
+        "vnp_RequestId": vnp_RequestId,
+        "vnp_TmnCode": vnp_TmnCode,
+        "vnp_Command": vnp_Command,
+        "vnp_TxnRef": vnp_TxnRef,
+        "vnp_OrderInfo": vnp_OrderInfo,
+        "vnp_TransactionDate": vnp_TransactionDate,
+        "vnp_CreateDate": vnp_CreateDate,
+        "vnp_IpAddr": vnp_IpAddr,
+        "vnp_Version": vnp_Version,
+        "vnp_SecureHash": secure_hash
+    }
+
+    headers = {"Content-Type": "application/json"}
+
+    response = requests.post(url, headers=headers, data=json.dumps(data))
+
+    if response.status_code == 200:
+        response_json = json.loads(response.text)
+    else:
+        response_json = {"error": f"Request failed with status code: {response.status_code}"}
+
+    return render(request, "query.html", {"title": "Kiểm tra kết quả giao dịch", "response_json": response_json})
+
+def refund(request):
+    if request.method == 'GET':
+        return render(request, "refund.html", {"title": "Hoàn tiền giao dịch"})
+
+    url = settings.VNPAY_API_URL
+    secret_key = settings.VNPAY_HASH_SECRET_KEY
+    vnp_TmnCode = settings.VNPAY_TMN_CODE
+    vnp_RequestId = n_str
+    vnp_Version = '2.1.0'
+    vnp_Command = 'refund'
+    vnp_TransactionType = request.POST['TransactionType']
+    vnp_TxnRef = request.POST['order_id']
+    vnp_Amount = request.POST['amount']
+    vnp_OrderInfo = request.POST['order_desc']
+    vnp_TransactionNo = '0'
+    vnp_TransactionDate = request.POST['trans_date']
+    vnp_CreateDate = datetime.now().strftime('%Y%m%d%H%M%S')
+    vnp_CreateBy = 'user01'
+    vnp_IpAddr = get_client_ip(request)
+
+    hash_data = "|".join([
+        vnp_RequestId, vnp_Version, vnp_Command, vnp_TmnCode, vnp_TransactionType, vnp_TxnRef,
+        vnp_Amount, vnp_TransactionNo, vnp_TransactionDate, vnp_CreateBy, vnp_CreateDate,
+        vnp_IpAddr, vnp_OrderInfo
+    ])
+
+    secure_hash = hmac.new(secret_key.encode(), hash_data.encode(), hashlib.sha512).hexdigest()
+
+    data = {
+        "vnp_RequestId": vnp_RequestId,
+        "vnp_TmnCode": vnp_TmnCode,
+        "vnp_Command": vnp_Command,
+        "vnp_TxnRef": vnp_TxnRef,
+        "vnp_Amount": vnp_Amount,
+        "vnp_OrderInfo": vnp_OrderInfo,
+        "vnp_TransactionDate": vnp_TransactionDate,
+        "vnp_CreateDate": vnp_CreateDate,
+        "vnp_IpAddr": vnp_IpAddr,
+        "vnp_TransactionType": vnp_TransactionType,
+        "vnp_TransactionNo": vnp_TransactionNo,
+        "vnp_CreateBy": vnp_CreateBy,
+        "vnp_Version": vnp_Version,
+        "vnp_SecureHash": secure_hash
+    }
+
+    headers = {"Content-Type": "application/json"}
+
+    response = requests.post(url, headers=headers, data=json.dumps(data))
+
+    if response.status_code == 200:
+        response_json = json.loads(response.text)
+    else:
+        response_json = {"error": f"Request failed with status code: {response.status_code}"}
+
+    return render(request, "refund.html", {"title": "Kết quả hoàn tiền giao dịch", "response_json": response_json})

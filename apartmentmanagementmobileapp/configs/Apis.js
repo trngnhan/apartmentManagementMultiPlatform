@@ -3,10 +3,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // const BASE_URL = "https://trngnhan.pythonanywhere.com/";
 // const BASE_URL = "http://192.168.44.106:8000/";
-//const BASE_URL = "http://192.168.44.103:8000/";
+// const BASE_URL = "http://127.0.0.1:8000/";
 // const BASE_URL = "http://10.37.230.2:8000/";
 // const BASE_URL = "https://c899f13fae22.ngrok-free.app/";
-const BASE_URL = "http://192.168.1.20:8000/";
+const BASE_URL = "http://192.168.1.26:8000/";
 
 export const endpoints = {
     login: "/o/token/",

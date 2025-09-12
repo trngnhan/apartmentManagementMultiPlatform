@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -109,7 +109,7 @@ ROOT_URLCONF = 'apartmentmanagement.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -184,14 +184,8 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-#9/6/2025
-#"5cniiEqy7JtaONRehHdkeeGy8mOGaDj3DJJw1Ezf"
-#"CKcFnIjBVK1eDFimILXPduPEG0tLBY8HsoJjfURUtEsaNt6OO0V7SlmzhGzUZkLIySyrWkL2pEEb1iAd7jlQw1SHwk8XBTSqmKoHEEk6P6pkhlBKZlwiloqswJBozcjj"
-
-#CLIENT_ID = "fSVZKEXevRpuWBe2OsdrbiOUEglfk2NvWmWeSixY"
-#CLIENT_SECRET = "w4sBJ4bSQo1xHfk9K7QGDwOsZgxXjsO2z2UGFpus2550d4gIY6JFovlPfnUP4NOBYsmNsoqwhOlSEStGmvstMNE4Zmbg9h6F8m1pVqjzcJgz7IIZyAktB1IhsHuwld1E"
-
-MOMO_ACCESS_KEY = 'F8BBA842ECF85'
-MOMO_SECRET_KEY = 'K951B6PE1waDMi640xX08PD3vg6EkVlz'
-MOMO_REDIRECT_URL = 'apartmentmanagement://payment-callback'
-MOMO_IPN_URL = 'https://abc123.ngrok-free.app/paymenttransactions/momo-ipn/'
+VNPAY_TMN_CODE = 'JDAC1OV8'
+VNPAY_HASH_SECRET_KEY = '3U50K0K5HPKDQJB7G3MVNZVAGBU3OVL1'
+VNPAY_RETURN_URL = 'apartmentmanagementmobileapp://payment-result'  # get from config
+VNPAY_PAYMENT_URL = 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'  # get from config
+VNPAY_API_URL = 'https://sandbox.vnpayment.vn/merchant_webapi/api/transaction'

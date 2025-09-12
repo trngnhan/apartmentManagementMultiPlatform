@@ -16,11 +16,12 @@
     const residentId = route.params?.residentId;
     const [currentResidentId, setCurrentResidentId] = useState(residentId || null);
     const [searchText, setSearchText] = useState("");
+    const [refresh, setRefresh] = useState(false);
 
     useFocusEffect(
       React.useCallback(() => {
         if (residentId) setCurrentResidentId(residentId);
-      }, [residentId])
+      }, [residentId, refresh])
     );
 
     const frequencyDisplay = (frequency) => {
@@ -62,6 +63,7 @@
         const now = new Date();
         const paidIds = new Set();
         transactionsData.forEach(tx => {
+          console.log("tx", tx);
           if (tx.status === 'COMPLETED' || tx.status === 'SUCCESS') {
             const paidDate = new Date(tx.paid_date);
             const isMonthly = categoriesData.find(c => c.id === tx.category.id)?.frequency === 'MONTHLY';
@@ -106,7 +108,13 @@
           <Card.Content>
             <Title style={[styles.title, isSubmitted && styles.titlePaid]}>{item.name}</Title>
             <Paragraph style={styles.amount}>
-              Số tiền: <Text style={styles.amountValue}>{parseInt(item.amount).toLocaleString('vi-VN')} VND</Text>
+              Số tiền:{" "}
+              <Text style={styles.amountValue}>
+                {(
+                  parseInt(item.amount) +
+                  Math.round(parseInt(item.amount) * parseFloat(item.tax_percentage) / 100)
+                ).toLocaleString('vi-VN')} VND
+              </Text>
             </Paragraph>
             <Paragraph style={styles.info}>
               Tần suất: <Text style={styles.infoValue}>{frequencyDisplay(item.frequency)}</Text>
@@ -130,13 +138,13 @@
                 Mô tả: <Text style={styles.infoValue}>{item.description}</Text>
               </Paragraph>
             ) : null}
-            {isSubmitted && item.is_recurring && (
-              <Text style={styles.paidText}>Đã thanh toán cho chu kỳ này</Text>
-            )}
-            {isSubmitted && !item.is_recurring && (
-              <Text style={styles.paidText}>Đã thanh toán</Text>
+            {isSubmitted && (
+              <Text style={styles.paidText}>
+                {item.is_recurring ? "Đã thanh toán cho chu kỳ này" : "Đã thanh toán"}
+              </Text>
             )}
           </Card.Content>
+          {/* Chỉ hiển thị nút nếu chưa thanh toán */}
           {!isSubmitted && (
             <Card.Actions>
               <Button
@@ -146,6 +154,7 @@
                     categoryId: item.id,
                     categoryName: item.name,
                     amount: item.amount,
+                    taxPercentage: item.tax_percentage,
                   });
                 }}
                 style={styles.payButton}

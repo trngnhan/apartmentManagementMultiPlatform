@@ -8,7 +8,7 @@ from .views import (UserViewSet, ResidentViewSet,
                     PaymentCategoryViewSet,
                     ParcelLockerViewSet, FeedbackViewSet, SurveyViewSet, SurveyOptionViewSet,
                     SurveyResponseViewSet, VisitorVehicleRegistrationViewSet, AmenityBookingListViewSet,
-                    AmenityViewSet)
+                    AmenityViewSet, payment_return)
 
 # from django.urls import path, include
 # from rest_framework.routers import DefaultRouter
@@ -32,6 +32,7 @@ router.register(r'amenities', AmenityViewSet, basename='amenition')
 router.register('amenitybookings', AmenityBookingListViewSet, basename='amenitybookings')
 urlpatterns = [
     path('', include(router.urls)),
-    # path('paymenttransactions/momo-ipn/', views.momo_ipn, name='momo_ipn'),
-    path('vnpay-ipn/', vnpay_ipn, name='vnpay-ipn'),
+    # path('vnpay-ipn/', vnpay_ipn, name='vnpay-ipn'),
+    path('', views.index, name='index'),
+    path('payment_return', payment_return, name='payment_return'),
 ]
