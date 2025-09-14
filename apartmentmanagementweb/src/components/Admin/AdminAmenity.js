@@ -13,7 +13,8 @@ function AdminAmenity() {
         opening_time: "",
         closing_time: "",
         max_bookings_per_slot: "1",
-        image: ""
+        image: "",
+        fee: ""
     });
     const [editId, setEditId] = useState(null);
     const [search, setSearch] = useState("");
@@ -53,6 +54,7 @@ function AdminAmenity() {
             formData.append("opening_time", form.opening_time);
             formData.append("closing_time", form.closing_time);
             formData.append("max_bookings_per_slot", form.max_bookings_per_slot);
+            formData.append("fee", form.fee || 0);
             if (form.image && typeof form.image !== "string") {
                 formData.append("image", form.image);
             }
@@ -81,7 +83,8 @@ function AdminAmenity() {
                     opening_time: "",
                     closing_time: "",
                     max_bookings_per_slot: "1",
-                    image: ""
+                    image: "",
+                    fee: ""
                 });
                 setEditId(null);
                 fetchAmenities();
@@ -188,7 +191,8 @@ function AdminAmenity() {
                                     marginBottom: 14,
                                     boxShadow: "0 2px 8px #e0e0e0",
                                 }}
-                                >
+                                key={item.id}
+                            >
                                 <div 
                                 style={{ 
                                     fontWeight: "bold", fontSize: 18, textAlign: "center", marginBottom: 8, textTransform: "uppercase" }}>{item.name}</div>
@@ -205,6 +209,7 @@ function AdminAmenity() {
                                 )}
                                 <div>Vị trí: {item.location}</div>
                                 <div>Mô tả: {item.description || "Không có mô tả"}</div>
+                                <div>Giá: {item.fee !== undefined && item.fee !== null ? Number(item.fee).toLocaleString("vi-VN") : "0"} VNĐ</div>
                                 <div style={{
                                     display: "flex",
                                     gap: 16,
@@ -260,7 +265,8 @@ function AdminAmenity() {
                                                 opening_time: item.opening_time,
                                                 closing_time: item.closing_time,
                                                 max_bookings_per_slot: item.max_bookings_per_slot.toString(),
-                                                image: item.image || ""
+                                                image: item.image || "",
+                                                fee: item.fee ? item.fee.toString() : ""
                                             });
                                             setEditId(item.id);
                                             setShowModal(true);
@@ -317,7 +323,8 @@ function AdminAmenity() {
                                     opening_time: "",
                                     closing_time: "",
                                     max_bookings_per_slot: "1",
-                                    image: ""
+                                    image: "",
+                                    fee: ""
                                 });
                             }}
                             style={{
@@ -372,6 +379,13 @@ function AdminAmenity() {
                                 style={{ padding: 10, borderRadius: 6, border: "1px solid #ccc" }}
                             />
                             <input
+                                type="number"
+                                placeholder="Giá (VNĐ)"
+                                value={form.fee}
+                                onChange={e => setForm({ ...form, fee: e.target.value })}
+                                style={{ padding: 10, borderRadius: 6, border: "1px solid #ccc" }}
+                            />
+                            <input
                                 type="text"
                                 placeholder="Mô tả"
                                 value={form.description}
@@ -410,7 +424,8 @@ function AdminAmenity() {
                                             opening_time: "",
                                             closing_time: "",
                                             max_bookings_per_slot: "1",
-                                            image: ""
+                                            image: "",
+                                            fee: ""
                                         });
                                     }}
                                     style={{

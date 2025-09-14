@@ -87,14 +87,12 @@ const AmenityBookingScreen = ({navigation}) => {
                 setBooking(res.data);
                 Alert.alert("Thành công", "Đã gửi yêu cầu đặt tiện ích!");
             } else {
-                // Nếu backend trả về lỗi, hiển thị lỗi chi tiết
                 const errorMsg = res.data?.detail || "Không thể đặt tiện ích.";
                 Alert.alert("Lỗi", errorMsg);
             }
         } catch (err) {
             let errorMsg = "Có lỗi xảy ra khi đặt tiện ích.";
             if (err?.response?.data) {
-                // Nếu là JSON, hiển thị chi tiết
                 if (typeof err.response.data === "object") {
                     errorMsg = JSON.stringify(err.response.data, null, 2);
                 } else if (typeof err.response.data === "string" && err.response.data.startsWith("{")) {
@@ -104,7 +102,6 @@ const AmenityBookingScreen = ({navigation}) => {
                         errorMsg = err.response.data;
                     }
                 } else {
-                    // Nếu là HTML hoặc text, chỉ hiển thị thông báo chung
                     errorMsg = "Lỗi hệ thống hoặc dữ liệu gửi lên không hợp lệ.";
                 }
             } else if (err.message) {

@@ -54,7 +54,10 @@ function Login() {
 
                 setSuccess("Đăng nhập thành công!");
                 setError("");
-                if (user.is_superuser) {
+                if (user.must_change_password) {
+                    navigate("/update-profile");
+                }
+                else if (user.is_superuser) {
                     navigate("/admin/home");
                 } else {
                     navigate("/resident/home");

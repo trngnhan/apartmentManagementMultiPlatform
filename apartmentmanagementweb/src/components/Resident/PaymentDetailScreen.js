@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Typography, Button, Spin, Alert, message, Card } from "antd";
+import { Typography, Button, Spin, message, Card } from "antd";
 import { useLocation, useParams } from "react-router-dom";
 import axios from "axios";
 
@@ -8,11 +8,18 @@ const { Title, Text } = Typography;
 function PaymentDetailScreen() {
     const { categoryId } = useParams();
     const location = useLocation();
-    // Lấy categoryName và amount từ state hoặc query nếu có
+    // Lấy categoryName, amount, taxPercentage từ state
     const categoryName = location.state?.categoryName || "";
     const amount = location.state?.amount || "";
+    const taxPercentage = location.state?.taxPercentage || 0;
 
     const [loading, setLoading] = useState(false);
+
+    // Tính tổng tiền đã cộng thuế
+    const totalAmount = (
+        parseInt(amount) +
+        Math.round(parseInt(amount) * parseFloat(taxPercentage) / 100)
+    );
 
     const handlePayOnline = async () => {
         setLoading(true);
@@ -23,15 +30,15 @@ function PaymentDetailScreen() {
                 setLoading(false);
                 return;
             }
-            const url = `https://c899f13fae22.ngrok-free.app/paymenttransactions/${categoryId}/create-vnpay-payment/`;
+            const url = `https://1709c3c0d8bc.ngrok-free.app/paymenttransactions/${categoryId}/create-vnpay-payment/`;
             const response = await axios.post(
                 url,
                 {},
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            const payUrl = response.data?.vnpay_response?.payUrl;
-            if (payUrl && typeof payUrl === "string") {
-                window.open(payUrl, "_blank");
+            const paymentUrl = response.data.payment_url || response.data?.vnpay_response?.payUrl;
+            if (paymentUrl && typeof paymentUrl === "string") {
+                window.open(paymentUrl, "_blank");
             } else {
                 message.error("Không nhận được link thanh toán VNPay hợp lệ từ server.");
             }
@@ -63,7 +70,7 @@ function PaymentDetailScreen() {
                 </Text>
                 <br />
                 <Text style={{ fontSize: 16, margin: "10px 0", display: "block" }}>
-                    Số tiền: {parseInt(amount).toLocaleString("vi-VN")} VND
+                    Số tiền: {totalAmount.toLocaleString("vi-VN")} VND
                 </Text>
                 <Button
                     type="primary"

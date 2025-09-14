@@ -11,6 +11,7 @@ function AdminAmenityBooking() {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedStatuses, setSelectedStatuses] = useState({});
+    const [residents, setResidents] = useState([]);
 
     const fetchBookings = async () => {
         setLoading(true);
@@ -25,28 +26,53 @@ function AdminAmenityBooking() {
         setLoading(false);
     };
 
+    const fetchResidents = async () => {
+        try {
+            const token = localStorage.getItem("access_token");
+            const api = authApis(token);
+            const res = await api.get("/residents/");
+            setResidents(res.data.results || res.data);
+        } catch (err) {
+            setResidents([]);
+        }
+    };
+
+
+    const getResidentName = (residentId) => {
+        const resident = residents.find(r => r.id === residentId || r.id === residentId?.id);
+        if (resident) {
+            if (resident.user) {
+                return resident.user.username || resident.user.email || "Không xác định";
+            }
+            return resident.email || "Không xác định";
+        }
+        return "Không xác định";
+    };
+
+
     const handleUpdateStatus = async (bookingId, newStatus) => {
         try {
             const token = localStorage.getItem("access_token");
             const api = authApis(token);
-            // Sửa endpoint PATCH vào từng booking
-            const res = await api.patch(`/amenitybookings/${bookingId}/`, {
+
+            const res = await api.patch(`/amenitybookings/${bookingId}/set-status/`, {
                 status: newStatus
             });
             if (res.status === 200) {
-                alert("Cập nhật trạng thái thành công!");
+                alert("Đã cập nhật trạng thái!");
+                message.success("Đã cập nhật trạng thái!");
                 fetchBookings();
             } else {
-                alert("Không thể cập nhật trạng thái.");
+                message.error("Không thể cập nhật trạng thái.");
             }
         } catch (err) {
-            alert("Có lỗi xảy ra khi cập nhật trạng thái.");
+            message.error("Có lỗi xảy ra khi cập nhật trạng thái.");
         }
     };
 
     useEffect(() => {
         fetchBookings();
-        // eslint-disable-next-line
+        fetchResidents();
     }, [amenityId]);
 
     const columns = [
@@ -55,9 +81,7 @@ function AdminAmenityBooking() {
             dataIndex: "resident",
             key: "resident",
             render: (resident) =>
-                resident && resident.user
-                    ? `${resident.user.first_name || ""} ${resident.user.last_name || ""}`.trim() || "Không xác định"
-                    : "Không xác định"
+                getResidentName(resident?.id || resident)
         },
         {
             title: "Ngày đặt",
@@ -104,9 +128,7 @@ function AdminAmenityBooking() {
             render: (status, record) => (
                 <Select
                     value={selectedStatuses[record.id] || status || "NEW"}
-                    style={{ 
-                        width: 140,
-                    }}
+                    style={{ width: 140 }}
                     onChange={async (value) => {
                         setSelectedStatuses((prev) => ({ ...prev, [record.id]: value }));
                         if (value !== status) {
@@ -134,8 +156,8 @@ function AdminAmenityBooking() {
                 minHeight: 600,
             }}
         >
-            <Title 
-                level={3} 
+            <Title
+                level={3}
                 style={{
                     textAlign: "center",
                     color: "#1976d2",

@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Card, Typography, List, Tag, Spin, Alert } from "antd";
+import { Card, Typography, List, Spin, Alert } from "antd";
 import { endpoints, authApis } from "../../configs/Apis";
 
 const { Title, Text } = Typography;
 
 function BookingDetailScreen() {
-
     const [bookings, setBookings] = useState([]);
     const [amenities, setAmenities] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -21,20 +20,20 @@ function BookingDetailScreen() {
                     return;
                 }
                 const user = JSON.parse(userStr);
-                const residentid = user.resident_id;
-                const residentId = residentid;
-
-                console.log("Resident ID:", residentId);
+                const residentId = user.resident_id;
 
                 const api = authApis(token);
 
-                // Lấy danh sách tiện ích
                 const resAmenities = await api.get(endpoints.amenities);
                 setAmenities(resAmenities.data.results || resAmenities.data);
 
-                // Lấy lịch sử đặt tiện ích của cư dân hiện tại
                 const resBookings = await api.get(endpoints.myAmenityBookings(residentId));
-                setBookings(resBookings.data.results || resBookings.data);
+                const allBookings = resBookings.data.results || resBookings.data;
+                
+                const filteredBookings = allBookings.filter(
+                    b => (typeof b.resident === "object" ? b.resident.id : b.resident) === residentId
+                );
+                setBookings(filteredBookings);
             } catch (err) {
                 setBookings([]);
             }
@@ -43,21 +42,16 @@ function BookingDetailScreen() {
         fetchData();
     }, []);
 
-    const getAmenityName = (amenityId) => {
-        const amenityObj = amenities.find(a => a.id === amenityId || a.id === amenityId?.id);
-        return amenityObj?.name || "";
-    };
-
-    const getStatusTag = (status) => {
+    const getStatusText = (status) => {
         switch (status) {
             case "NEW":
-                return <Tag color="blue">Mới</Tag>;
+                return <span style={{ fontWeight: "bold", color: "blue" }}>Mới</span>;
             case "APPROVED":
-                return <Tag color="green">Đồng ý</Tag>;
+                return <span style={{ fontWeight: "bold", color: "green" }}>Đồng ý</span>;
             case "REJECTED":
-                return <Tag color="red">Không đồng ý</Tag>;
+                return <span style={{ fontWeight: "bold", color: "red" }}>Không đồng ý</span>;
             default:
-                return <Tag>{status}</Tag>;
+                return <span>{status}</span>;
         }
     };
 
@@ -100,11 +94,17 @@ function BookingDetailScreen() {
                                     Tên tiện ích: {amenityObj?.name || item.amenity?.name || item.amenity}
                                 </Title>
                                 <Text>
-                                    Ngày đặt: {item.booking_date ? new Date(item.booking_date).toLocaleDateString("vi-VN") : ""}
+                                    Ngày đặt: {item.booking_date ? new Date(item.booking_date).toLocaleDateString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit" }) : ""}
                                 </Text>
                                 <br />
                                 <Text>
-                                    Ngày sử dụng: {item.usage_date ? new Date(item.usage_date).toLocaleDateString("vi-VN") : ""}
+                                    Ngày sử dụng: {item.usage_date ? new Date(item.usage_date).toLocaleDateString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit" }) : ""}
+                                </Text>
+                                <br />
+                                <Text>
+                                    Giá: {amenityObj && amenityObj.fee !== undefined && amenityObj.fee !== null
+                                    ? Number(amenityObj.fee).toLocaleString("vi-VN") + " VND"
+                                    : "Không xác định"}
                                 </Text>
                                 <br />
                                 <Text>
@@ -112,7 +112,7 @@ function BookingDetailScreen() {
                                 </Text>
                                 <br />
                                 <Text>
-                                    Trạng thái: {getStatusTag(item.status)}
+                                    Trạng thái: {getStatusText(item.status)}
                                 </Text>
                                 <br />
                                 <Text>

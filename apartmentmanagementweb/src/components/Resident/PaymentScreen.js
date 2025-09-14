@@ -8,7 +8,6 @@ const { Title, Paragraph, Text } = Typography;
 function PaymentScreen() {
     const [categories, setCategories] = useState([]);
     const [transactions, setTransactions] = useState([]);
-    const [submittedPaymentIds, setSubmittedPaymentIds] = useState(new Set());
     const [loading, setLoading] = useState(true);
     const [searchText, setSearchText] = useState("");
     const navigate = useNavigate();
@@ -41,29 +40,17 @@ function PaymentScreen() {
                 const user = JSON.parse(userStr);
                 const api = authApis(token);
 
+                console.log("Fetching payment categories and transactions for resident ID:", user.resident_id);
+
                 const categoriesResponse = await api.get(endpoints.paymentCategories);
                 const categoriesData = categoriesResponse.data;
+                console.log("Fetched categories:", categoriesData);
 
                 const transactionsResponse = await api.get(endpoints.myPayments);
                 const transactionsData = transactionsResponse.data;
 
                 setCategories(categoriesData);
                 setTransactions(transactionsData);
-
-                // Cập nhật danh sách khoản phí đã thanh toán (dựa trên chu kỳ)
-                const now = new Date();
-                const paidIds = new Set();
-                transactionsData.forEach(tx => {
-                    if (tx.status === 'COMPLETED' || tx.status === 'SUCCESS') {
-                        const paidDate = new Date(tx.paid_date);
-                        const isMonthly = categoriesData.find(c => c.id === tx.category.id)?.frequency === 'MONTHLY';
-                        if (!isMonthly || (paidDate.getMonth() === now.getMonth() && paidDate.getFullYear() === now.getFullYear())) {
-                            paidIds.add(tx.category.id);
-                        }
-                    }
-                });
-                setSubmittedPaymentIds(paidIds);
-
             } catch (error) {
                 setCategories([]);
                 setTransactions([]);
@@ -74,11 +61,13 @@ function PaymentScreen() {
         fetchData();
     }, []);
 
-    // Lọc các hóa đơn mà cư dân này được chọn
+    // Lấy residentId từ user
     const userStr = localStorage.getItem("user");
     const user = userStr ? JSON.parse(userStr) : {};
     const residentId = user.resident_id;
+    console.log("Resident ID:", residentId);
 
+    // Lọc các khoản phí của cư dân và theo tìm kiếm
     const filteredCategories = categories.filter(
         item =>
             item.active === true &&
@@ -88,6 +77,25 @@ function PaymentScreen() {
                 item.description?.toLowerCase().includes(searchText.toLowerCase())
             )
     );
+
+    // Kiểm tra đã thanh toán chưa (theo chu kỳ)
+    const isPaid = (categoryId, frequency) => {
+        const now = new Date();
+        return transactions.some(tx => {
+            const txCategoryId = typeof tx.category === "object" ? tx.category.id : tx.category;
+            if (
+                txCategoryId === categoryId &&
+                (tx.status === 'COMPLETED' || tx.status === 'SUCCESS')
+            ) {
+                if (frequency === 'MONTHLY') {
+                    const paidDate = new Date(tx.paid_date);
+                    return paidDate.getMonth() === now.getMonth() && paidDate.getFullYear() === now.getFullYear();
+                }
+                return true;
+            }
+            return false;
+        });
+    };
 
     return (
         <div
@@ -125,7 +133,9 @@ function PaymentScreen() {
                 <Alert message="Không có khoản phí nào" type="info" showIcon />
             ) : (
                 filteredCategories.map(item => {
-                    const isSubmitted = submittedPaymentIds.has(item.id);
+                    const paid = isPaid(item.id, item.frequency);
+                    // Tính tổng tiền đã cộng thuế
+                    const totalAmount = parseInt(item.amount) + Math.round(parseInt(item.amount) * parseFloat(item.tax_percentage) / 100);
                     return (
                         <Card
                             key={item.id}
@@ -134,6 +144,7 @@ function PaymentScreen() {
                                 background: "#fff",
                                 boxShadow: "0 2px 8px #e0e0e0",
                                 marginBottom: 20,
+                                opacity: paid ? 0.6 : 1,
                             }}
                         >
                             <Card.Meta
@@ -141,8 +152,8 @@ function PaymentScreen() {
                                     <span style={{
                                         fontSize: 18,
                                         fontWeight: "bold",
-                                        color: isSubmitted ? "#888" : "#222",
-                                        textDecoration: isSubmitted ? "line-through" : "none",
+                                        color: paid ? "#888" : "#222",
+                                        textDecoration: paid ? "line-through" : "none",
                                         textAlign: "center",
                                         display: "block",
                                         textTransform: "uppercase",
@@ -153,7 +164,9 @@ function PaymentScreen() {
                                 description={
                                     <>
                                         <Paragraph>
-                                            Số tiền: <Text style={{ color: "#FF6F61", fontWeight: "bold" }}>{parseInt(item.amount).toLocaleString('vi-VN')} VND</Text>
+                                            Số tiền: <Text style={{ color: "#FF6F61", fontWeight: "bold" }}>
+                                                {totalAmount.toLocaleString('vi-VN')} VND
+                                            </Text>
                                         </Paragraph>
                                         <Paragraph>
                                             Tần suất: <Text strong>{frequencyDisplay(item.frequency)}</Text>
@@ -179,20 +192,15 @@ function PaymentScreen() {
                                                 Mô tả: <Text>{item.description}</Text>
                                             </Paragraph>
                                         )}
-                                        {isSubmitted && item.is_recurring && (
+                                        {paid && (
                                             <Tag color="green" style={{ fontStyle: "italic", fontWeight: "bold" }}>
-                                                Đã thanh toán cho chu kỳ này
-                                            </Tag>
-                                        )}
-                                        {isSubmitted && !item.is_recurring && (
-                                            <Tag color="green" style={{ fontStyle: "italic", fontWeight: "bold" }}>
-                                                Đã thanh toán
+                                                {item.is_recurring ? "Đã thanh toán cho chu kỳ này" : "Đã thanh toán"}
                                             </Tag>
                                         )}
                                     </>
                                 }
                             />
-                            {!isSubmitted && (
+                            {!paid && (
                                 <div style={{ textAlign: "right", marginTop: 10 }}>
                                     <Button
                                         type="primary"
@@ -204,8 +212,10 @@ function PaymentScreen() {
                                         }}
                                         onClick={() => navigate(`/resident/payment-detail/${item.id}`, {
                                             state: {
+                                                categoryId: item.id,
                                                 categoryName: item.name,
                                                 amount: item.amount,
+                                                taxPercentage: item.tax_percentage,
                                             }
                                         })}
                                     >

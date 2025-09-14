@@ -33,7 +33,7 @@ const AdminAmenityBooking = ({route}) => {
         try {
             const token = await AsyncStorage.getItem("token");
             const api = authApis(token);
-            const res = await api.get("/residents/"); // endpoint trả về danh sách resident
+            const res = await api.get("/residents/");
             setResidents(res.data.results || res.data);
         } catch (err) {
             setResidents([]);

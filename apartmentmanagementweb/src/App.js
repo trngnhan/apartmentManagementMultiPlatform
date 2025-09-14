@@ -29,12 +29,14 @@ import PaymentScreen from "./components/Resident/PaymentScreen";
 import PaymentDetailScreen from "./components/Resident/PaymentDetailScreen";
 import LockerItems from "./components/Resident/LockerItems";
 import NotificationScreen from "./components/Resident/NotificationScreen";
+import UpdateProfile from "./components/UpdateProfile";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/Login" element={<Login />} />
+        <Route path="/update-profile" element={<UpdateProfile />} />
         {/** Admin Routes */}
         <Route path="/admin/home" element={<AdminHome />} />
         <Route path="/admin/accounts" element={<AdminAccount />} />
@@ -63,7 +65,7 @@ function App() {
         <Route path="/resident/amenity-booking" element={<AmenityBookingScreen />} />
         <Route path="/resident/amenity-booking-history" element={<BookingDetailScreen />} />
         <Route path="/resident/payment" element={<PaymentScreen />} />
-        <Route path="/resident/payment-detail/:transactionId" element={<PaymentDetailScreen />} />
+        <Route path="/resident/payment-detail/:categoryId" element={<PaymentDetailScreen />} />
         <Route path="/resident/locker-items" element={<LockerItems />} />
         <Route path="/resident/locker-notification" element={<NotificationScreen />} />
       </Routes>

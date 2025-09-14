@@ -1104,21 +1104,11 @@ class AmenityBookingListViewSet(viewsets.ViewSet, generics.RetrieveUpdateAPIView
             name=f"Phí tiện ích {amenity.name}",
             resident=resident,
             defaults={
-                "amount": getattr(amenity, "fee", 0),  # Nếu có trường fee, hoặc sửa lại cho phù hợp
+                "amount": getattr(amenity, "fee", 0),
                 "is_recurring": False,
                 "frequency": "ONE_TIME",
                 "category_type": "UTILITY",
             }
-        )
-
-        # Tạo hóa đơn
-        PaymentTransaction.objects.create(
-            category=category,
-            amount=category.amount,
-            method="",
-            status="PENDING",
-            paid_date=None,
-            resident=resident,
         )
 
         headers = self.get_success_headers(serializer.data)

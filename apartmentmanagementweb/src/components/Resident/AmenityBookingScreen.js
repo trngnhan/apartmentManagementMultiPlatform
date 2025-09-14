@@ -3,6 +3,7 @@ import { Card, Typography, Select, DatePicker, TimePicker, Input, Button, messag
 import { useNavigate } from "react-router-dom";
 import { endpoints, authApis } from "../../configs/Apis";
 import dayjs from "dayjs";
+import { set } from "firebase/database";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -55,7 +56,7 @@ function AmenityBookingScreen() {
             const payload = {
                 amenity: selectedAmenity,
                 resident: user.resident_id,
-                booking_date: new Date().toISOString(),
+                booking_date: dayjs().format("YYYY-MM-DD"),
                 usage_date: usageDate.format("YYYY-MM-DD"),
                 start_time: startTime.format("HH:mm"),
                 end_time: endTime.format("HH:mm"),
@@ -64,6 +65,12 @@ function AmenityBookingScreen() {
             };
             const res = await api.post(endpoints.amenityBooking, payload);
             if (res.status === 201 || res.status === 200) {
+                alert("Đã gửi yêu cầu đặt tiện ích!");
+                setSelectedAmenity(null);
+                setUsageDate(null);
+                setStartTime(null);
+                setEndTime(null);
+                setNote("");
                 Modal.success({
                     title: "Thành công",
                     content: "Đã gửi yêu cầu đặt tiện ích!",
@@ -73,7 +80,19 @@ function AmenityBookingScreen() {
                 message.error("Không thể đặt tiện ích.");
             }
         } catch (err) {
-            message.error("Có lỗi xảy ra khi đặt tiện ích.");
+            if (err?.response?.data?.non_field_errors) {
+                // Nếu lỗi trùng unique, backend sẽ trả về non_field_errors
+                alert(
+                    err.response.data.non_field_errors[0] ===
+                    "The fields amenity, resident, booking_date, start_time must make a unique set."
+                        ? "Bạn đã đặt tiện ích này vào khung giờ này rồi. Vui lòng chọn thời gian khác!"
+                        : err.response.data.non_field_errors[0]
+                );
+            } else if (err?.response?.data?.detail) {
+                alert(err.response.data.detail);
+            } else {
+                alert("Có lỗi xảy ra khi đặt tiện ích.");
+            }
         }
     };
 

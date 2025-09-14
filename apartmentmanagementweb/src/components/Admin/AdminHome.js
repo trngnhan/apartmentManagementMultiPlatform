@@ -18,6 +18,12 @@ const adminFeatures = [
 function AdminHome() {
     const navigate = useNavigate();
 
+    const handleLogout = () => {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+        navigate("/login");
+    };
+
     return (
         <div style={{
             maxWidth: 1000,
@@ -25,8 +31,29 @@ function AdminHome() {
             background: "#fff",
             borderRadius: 12,
             boxShadow: "0 2px 16px #eee",
-            padding: 22
+            padding: 22,
+            position: "relative"
         }}>
+            {/* Nút đăng xuất */}
+            <button
+                onClick={handleLogout}
+                style={{
+                    position: "absolute",
+                    top: 18,
+                    right: 24,
+                    background: "#F44336",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 8,
+                    padding: "8px 18px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontSize: 15,
+                    boxShadow: "0 2px 8px #e0e0e0"
+                }}
+            >
+                Đăng xuất
+            </button>
             <h2 style={{ textAlign: "center", marginBottom: 32, textTransform: "uppercase" }}>Trang quản trị hệ thống</h2>
             <h4 style={{ textAlign: "center", marginBottom: 24}}>Chào mừng bạn đã đến với Hệ thống Quản lý chung cư</h4>
             <div style={{
