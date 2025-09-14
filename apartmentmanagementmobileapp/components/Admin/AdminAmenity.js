@@ -18,7 +18,8 @@ const AdminAmenity = () => {
         opening_time: "",
         closing_time: "",
         max_bookings_per_slot: "1",
-        image: ""
+        image: "",
+        fee: ""
     });
     const [editId, setEditId] = useState(null);
     const navigation = useNavigation();
@@ -53,6 +54,7 @@ const AdminAmenity = () => {
             const payload = {
                 ...form,
                 max_bookings_per_slot: parseInt(form.max_bookings_per_slot) || 1,
+                fee: parseFloat(form.fee) || 0
             };
             let res;
             if (editId) {
@@ -125,6 +127,9 @@ const AdminAmenity = () => {
                 <Text style={{ color: "#aaa", textAlign: "center" }}>Không có ảnh</Text>
             )}
             <Text>Vị trí: {item.location}</Text>
+            <Text>
+            Giá: {item.fee !== undefined && item.fee !== null ? Number(item.fee).toLocaleString("vi-VN") : "0"} VNĐ
+            </Text>
             <Text>Mô tả: {item.description || "Không có mô tả"}</Text>
             <Text style={{ textDecorationColor: "#086bdcff", textDecorationLine: "underline" }}>
                 Giờ mở cửa: {item.opening_time?.slice(0, 5)} - {item.closing_time?.slice(0, 5)}
@@ -147,6 +152,7 @@ const AdminAmenity = () => {
                         name: item.name,
                         description: item.description,
                         location: item.location,
+                        fee: item.fee ? item.fee.toString() : "",
                         opening_time: item.opening_time,
                         closing_time: item.closing_time,
                         max_bookings_per_slot: item.max_bookings_per_slot.toString(),
@@ -236,6 +242,13 @@ const AdminAmenity = () => {
                             placeholder="Vị trí*"
                             value={form.location}
                             onChangeText={t => setForm({ ...form, location: t })}
+                        />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Giá"
+                            keyboardType="numeric"
+                            value={form.fee}
+                            onChangeText={t => setForm({ ...form, fee: t })}
                         />
                         <TextInput
                             style={styles.input}

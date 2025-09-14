@@ -20,6 +20,8 @@ const AmenityBookingScreen = ({navigation}) => {
     const [booking, setBooking] = useState(null);
     const [note, setNote] = useState("");
     const [myBookings, setMyBookings] = useState([]);
+    const residentId = resident.resident_id;
+    console.log("Resident ID for booking:", residentId);  
 
     useEffect(() => {
         fetchAmenities();
@@ -30,8 +32,9 @@ const AmenityBookingScreen = ({navigation}) => {
         try {
             const token = await AsyncStorage.getItem("token");
             const api = authApis(token);
-            const res = await api.get(endpoints.myAmenityBookings(resident.id));
+            const res = await api.get(endpoints.myAmenityBookings(residentId));
             setMyBookings(res.data.results || res.data);
+            console.log("My bookings fetched:", res.data);
         } catch (err) {
             setMyBookings([]);
         }
@@ -67,15 +70,16 @@ const AmenityBookingScreen = ({navigation}) => {
         try {
             const token = await AsyncStorage.getItem("token");
             const api = authApis(token);
+
             const payload = {
-                amenity: selectedAmenity.id,  
-                resident: resident.id - 1,
-                booking_date: new Date().toISOString(),
+                amenity: selectedAmenity.id,
+                resident: residentId,
+                booking_date: new Date().toISOString().slice(0, 10),
                 usage_date: usageDate,
                 start_time: startTime,
                 end_time: endTime,
                 note: note,
-                status: "NEW"
+                status: "NEW",
             };
             console.log("Booking payload:", payload);
             const res = await api.post(endpoints.amenityBooking, payload);
@@ -83,11 +87,31 @@ const AmenityBookingScreen = ({navigation}) => {
                 setBooking(res.data);
                 Alert.alert("Thành công", "Đã gửi yêu cầu đặt tiện ích!");
             } else {
-                Alert.alert("Lỗi", "Không thể đặt tiện ích.");
+                // Nếu backend trả về lỗi, hiển thị lỗi chi tiết
+                const errorMsg = res.data?.detail || "Không thể đặt tiện ích.";
+                Alert.alert("Lỗi", errorMsg);
             }
         } catch (err) {
+            let errorMsg = "Có lỗi xảy ra khi đặt tiện ích.";
+            if (err?.response?.data) {
+                // Nếu là JSON, hiển thị chi tiết
+                if (typeof err.response.data === "object") {
+                    errorMsg = JSON.stringify(err.response.data, null, 2);
+                } else if (typeof err.response.data === "string" && err.response.data.startsWith("{")) {
+                    try {
+                        errorMsg = JSON.stringify(JSON.parse(err.response.data), null, 2);
+                    } catch {
+                        errorMsg = err.response.data;
+                    }
+                } else {
+                    // Nếu là HTML hoặc text, chỉ hiển thị thông báo chung
+                    errorMsg = "Lỗi hệ thống hoặc dữ liệu gửi lên không hợp lệ.";
+                }
+            } else if (err.message) {
+                errorMsg = err.message;
+            }
             console.log("Booking error:", err?.response?.data || err.message || err);
-            Alert.alert("Lỗi", "Có lỗi xảy ra khi đặt tiện ích.");
+            Alert.alert("Lỗi", errorMsg);
         }
     };
 
@@ -128,6 +152,9 @@ const AmenityBookingScreen = ({navigation}) => {
                             ) : (
                                 <Text style={{ color: "#aaa", textAlign: "center", marginBottom: 6 }}>Không có ảnh</Text>
                             )}
+                            <Text style={{ fontSize: 14, color: "#e67e22", fontWeight: "bold" }}>
+                                Giá: {item.fee !== undefined && item.fee !== null ? Number(item.fee).toLocaleString("vi-VN") : "0"} VNĐ
+                            </Text>
                             <Text style={{ fontWeight: "bold", color: "#4A90E2" }}>{item.name}</Text>
                             <Text style={{ fontSize: 12 }}>{item.location}</Text>
                             <Text style={{ fontSize: 12 }}>{item.opening_time} - {item.closing_time}</Text>
@@ -176,7 +203,7 @@ const AmenityBookingScreen = ({navigation}) => {
 
                     <TouchableOpacity
                         style={[styles.buttonn, { flex: 1 }]}
-                        onPress={() => navigation.navigate("BookingDetailScreen", { myBookings, amenities, resident })}
+                        onPress={() => navigation.navigate("BookingDetailScreen", { myBookings, amenities, residentId })}
                     >
                         <Text style={{ color: "#fff", fontWeight: "bold", textAlign: "center" }}>Các tiện ích đã đặt</Text>
                     </TouchableOpacity>

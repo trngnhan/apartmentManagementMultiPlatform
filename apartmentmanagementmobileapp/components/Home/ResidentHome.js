@@ -245,7 +245,7 @@ const ResidentHome = () => {
                             source={require("../../assets/payment.png")}
                             style={MyStyles.image}
                         />
-                        <Text style={[MyStyles.padding, MyStyles.textSmall]}>Thanh toán phí chung cư</Text>
+                        <Text style={[MyStyles.padding, MyStyles.textSmall]}>Thanh toán phí</Text>
                     </View>
                 </TouchableOpacity>
             </View>

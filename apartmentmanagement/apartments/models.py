@@ -139,7 +139,7 @@ class PaymentTransaction(BaseModel):
         FAILED = 'FAILED', 'Thất bại'
         REFUNDED = 'REFUNDED', 'Đã hoàn lại'
 
-    apartment = models.ForeignKey(Apartment, on_delete=models.CASCADE, related_name='payments')
+    apartment = models.ForeignKey(Apartment, on_delete=models.CASCADE, related_name='payments', null=True, blank=True)
     category = models.ForeignKey(PaymentCategory, on_delete=models.SET_NULL, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     method = models.CharField(max_length=20, choices=Method.choices)
@@ -149,6 +149,8 @@ class PaymentTransaction(BaseModel):
     paid_date = models.DateTimeField(null=True, blank=True)
     transaction_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
+    resident = models.ForeignKey('Resident', on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='transactions')
 
     def __str__(self):
         # Định dạng số tiền
@@ -234,6 +236,7 @@ class Amenity(BaseModel):
     closing_time = models.TimeField()
     max_bookings_per_slot = models.IntegerField(default=1)
     image = CloudinaryField(null=True, blank=True)
+    fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
         return self.name

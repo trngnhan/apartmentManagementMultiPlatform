@@ -141,7 +141,7 @@ class PaymentTransactionSerializer(serializers.ModelSerializer, generics.ListAPI
         model = PaymentTransaction
         fields = ['id', 'apartment', 'apartment_code', 'category', 'category_name',
                   'amount', 'method', 'transaction_id', 'status', 'payment_proof',
-                  'payment_proof_url', 'paid_date']
+                  'payment_proof_url', 'paid_date', 'resident']
         read_only_fields = ['created_date', 'updated_date']
 
     def get_payment_proof_url(self, obj):
@@ -262,7 +262,8 @@ class AmenitySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Amenity
-        fields = ['id', 'name', 'location', 'description', 'image', 'opening_time', 'closing_time', 'max_bookings_per_slot']
+        fields = ['id', 'name', 'location', 'description', 'image', 'opening_time', 'closing_time',
+                  'max_bookings_per_slot', 'fee']
 
     def get_image(self, obj):
         return obj.image.url if obj.image else None
@@ -270,7 +271,8 @@ class AmenitySerializer(serializers.ModelSerializer):
 # Amenity Booking Serializer
 class AmenityBookingSerializer(serializers.ModelSerializer):
     amenity = serializers.PrimaryKeyRelatedField(queryset=Amenity.objects.all())
-    resident = ResidentSerializer()
+    resident = serializers.PrimaryKeyRelatedField(queryset=Resident.objects.all())
+
 
     class Meta:
         model = AmenityBooking

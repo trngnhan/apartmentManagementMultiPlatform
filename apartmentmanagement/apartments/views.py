@@ -1091,6 +1091,39 @@ class AmenityBookingListViewSet(viewsets.ViewSet, generics.RetrieveUpdateAPIView
             queryset = queryset.filter(resident_id=resident_id)
         return queryset
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        booking = serializer.save()
+
+        # Tạo hoặc lấy PaymentCategory cho tiện ích này
+        amenity = booking.amenity
+        resident = booking.resident
+
+        category, _ = PaymentCategory.objects.get_or_create(
+            name=f"Phí tiện ích {amenity.name}",
+            resident=resident,
+            defaults={
+                "amount": getattr(amenity, "fee", 0),  # Nếu có trường fee, hoặc sửa lại cho phù hợp
+                "is_recurring": False,
+                "frequency": "ONE_TIME",
+                "category_type": "UTILITY",
+            }
+        )
+
+        # Tạo hóa đơn
+        PaymentTransaction.objects.create(
+            category=category,
+            amount=category.amount,
+            method="",
+            status="PENDING",
+            paid_date=None,
+            resident=resident,
+        )
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     @action(methods=['patch'], detail=True, url_path='set-status')
     def set_status(self, request, pk=None):
         booking = self.get_object()
@@ -1111,8 +1144,9 @@ class AmenityBookingListViewSet(viewsets.ViewSet, generics.RetrieveUpdateAPIView
 
         booking.status = status_value
         booking.save()
+
         serializer = self.get_serializer(booking)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 def index(request):

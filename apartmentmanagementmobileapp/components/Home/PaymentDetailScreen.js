@@ -24,30 +24,6 @@ const PaymentDetailScreen = ({ route }) => {
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
 
-  // Định nghĩa hàm handleDeepLink trước khi dùng
-  const handleDeepLink = (event) => {
-    const url = event.url;
-    if (url && url.startsWith('apartmentmanagementmobileapp://payment-result')) {
-      Alert.alert('Thanh toán thành công!', 'Bạn đã thanh toán thành công qua VNPay.');
-      navigation.navigate('PaymentScreen');
-    }
-  };
-
-  useEffect(() => {
-    const subscription = Linking.addEventListener('url', handleDeepLink);
-
-    Linking.getInitialURL().then((url) => {
-      if (url && url.startsWith('apartmentmanagementmobileapp://payment-result')) {
-        Alert.alert('Thanh toán thành công!', 'Bạn đã thanh toán thành công qua VNPay.');
-        navigation.navigate('PaymentScreen');
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [navigation]);
-
   const handlePayOnline = async () => {
     setLoading(true);
     try {
@@ -57,7 +33,7 @@ const PaymentDetailScreen = ({ route }) => {
         setLoading(false);
         return;
       }
-      const url = `https://4c82c6baf7b5.ngrok-free.app/paymenttransactions/${categoryId}/create-vnpay-payment/`;
+      const url = `https://c2cfe409a06d.ngrok-free.app/paymenttransactions/${categoryId}/create-vnpay-payment/`;
       const response = await axios.post(
         url,
         {},
@@ -82,11 +58,11 @@ const PaymentDetailScreen = ({ route }) => {
       <Text style={[MyStyles.sectionTitle, { marginBottom: 10 }]}>Thanh toán phí</Text>
       <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Khoản phí: {categoryName}</Text>
       <Text style={{ fontSize: 16, marginVertical: 10 }}>
-  Số tiền: {(
-    parseInt(amount) +
-    Math.round(parseInt(amount) * parseFloat(taxPercentage) / 100)
-  ).toLocaleString('vi-VN')} VND
-</Text>
+        Số tiền: {(
+          parseInt(amount) +
+          Math.round(parseInt(amount) * parseFloat(taxPercentage) / 100)
+        ).toLocaleString('vi-VN')} VND
+      </Text>
       <Button
         title={loading ? "Đang xử lý..." : "Thanh toán VNPay"}
         onPress={handlePayOnline}

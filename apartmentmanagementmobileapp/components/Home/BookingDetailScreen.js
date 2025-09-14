@@ -3,12 +3,16 @@ import React, { useEffect } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
 
 const BookingDetailScreen = ({ route, navigation }) => {
-    const { myBookings, amenities, resident } = route.params;
-    
+    const { myBookings, amenities, residentId } = route.params;
+
+    console.log("Resident ID:", residentId);
+
     // Lọc booking chỉ của cư dân hiện tại
     const filteredBookings = myBookings.filter(
-        b => b.resident && (b.resident.id === resident.resident_id)
+        b => (typeof b.resident === "object" ? b.resident.id : b.resident) === residentId
     );
+
+    console.log("filteredBookings:", filteredBookings);
     
     return (
         <LinearGradient colors={['#ffffff', '#fafafa', '#69ac91']} style={{ flex: 1, padding: 16 }}>

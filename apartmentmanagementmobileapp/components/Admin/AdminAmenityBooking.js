@@ -12,6 +12,7 @@ const AdminAmenityBooking = ({route}) => {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedStatuses, setSelectedStatuses] = useState({});
+    const [residents, setResidents] = useState([]);
 
     const fetchBookings = async () => {
         setLoading(true);
@@ -28,11 +29,22 @@ const AdminAmenityBooking = ({route}) => {
         setLoading(false);
     };
 
-    const handleUpdateStatus = async (id, newStatus) => {
+    const fetchResidents = async () => {
         try {
             const token = await AsyncStorage.getItem("token");
             const api = authApis(token);
-            const res = await api.patch(`${endpoints.amenityBookings(amenityId)}set-status/`, {
+            const res = await api.get("/residents/"); // endpoint trả về danh sách resident
+            setResidents(res.data.results || res.data);
+        } catch (err) {
+            setResidents([]);
+        }
+    };
+
+    const handleUpdateStatus = async (bookingId, newStatus) => {
+        try {
+            const token = await AsyncStorage.getItem("token");
+            const api = authApis(token);
+            const res = await api.patch(`/amenitybookings/${bookingId}/set-status/`, {
                 status: newStatus
             });
             if (res.status === 200) {
@@ -46,16 +58,26 @@ const AdminAmenityBooking = ({route}) => {
         }
     };
 
+    const getResidentName = (residentId) => {
+        const resident = residents.find(r => r.id === residentId);
+        if (resident) {
+            if (resident.user) {
+                return resident.user.username || resident.user.email || "Không xác định";
+            }
+            return resident.email || "Không xác định";
+        }
+        return "Không xác định";
+    };
+
     useEffect(() => {
         fetchBookings();
+        fetchResidents();
     }, [amenityId]);
 
     const renderItem = ({ item }) => (
         <View style={styles.card}>
             <Text style={styles.title}>
-            Cư dân: {(item.resident && item.resident.user && (item.resident.user.first_name || item.resident.user.last_name))
-                ? `${item.resident.user.first_name || ""} ${item.resident.user.last_name || ""}`.trim()
-                : "Không xác định"}
+                Cư dân: {getResidentName(item.resident?.id || item.resident)}
             </Text>
             <Text>
                 Ngày đặt: {item.booking_date ? new Date(item.booking_date).toLocaleString("vi-VN", {
