@@ -40,7 +40,9 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <MyProvider>
+      {/* Hỗ trợ các thao tác vuốt, kéo, chạm mượt mà trên mobile. */}
+      <MyProvider> {/* MyProvider bọc ngoài toàn bộ để quản lý và chia sẻ
+        state chứa thông tin đăng nhập qua các components */}
         <NavigationContainer>
           <Stack.Navigator initialRouteName="Login">
             {/* Login */}
@@ -85,7 +87,3 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
-
-//"KVEQ1CQ389WFDQZXR8JVARWL"
-// "BV96e0rWzsGyZU0MFMjT1u19m5j0MXrJVCQaEQAZ"
-// "9ciZz1wa06Tju9rOfY49828GDvFRHc30RfS9wOJfrTfa2sukERvhpI4T7JHgeZaO1jxTfXsDjfeSDm9vLiQdcHtPl7ZefwvlpBthKY3doWfL8jF09BcKhOQjUE7h3CK0"

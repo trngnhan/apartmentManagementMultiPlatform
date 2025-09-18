@@ -33,7 +33,7 @@ const PaymentDetailScreen = ({ route }) => {
         setLoading(false);
         return;
       }
-      const url = `https://c2cfe409a06d.ngrok-free.app/paymenttransactions/${categoryId}/create-vnpay-payment/`;
+      const url = `https://48c8334a9571.ngrok-free.app/paymenttransactions/${categoryId}/create-vnpay-payment/`;
       const response = await axios.post(
         url,
         {},

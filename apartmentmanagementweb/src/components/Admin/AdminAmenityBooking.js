@@ -40,10 +40,13 @@ function AdminAmenityBooking() {
 
     const getResidentName = (residentId) => {
         const resident = residents.find(r => r.id === residentId || r.id === residentId?.id);
+        if (resident && resident.user) {
+            const firstName = resident.user.first_name || "";
+            const lastName = resident.user.last_name || "";
+            const fullName = `${firstName} ${lastName}`.trim();
+            return fullName || resident.user.username || resident.user.email || "Không xác định";
+        }
         if (resident) {
-            if (resident.user) {
-                return resident.user.username || resident.user.email || "Không xác định";
-            }
             return resident.email || "Không xác định";
         }
         return "Không xác định";

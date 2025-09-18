@@ -186,6 +186,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 VNPAY_TMN_CODE = 'JDAC1OV8'
 VNPAY_HASH_SECRET_KEY = '3U50K0K5HPKDQJB7G3MVNZVAGBU3OVL1'
-VNPAY_RETURN_URL = 'http://192.168.1.26:8000/payment_return'  # get from config
+VNPAY_RETURN_URL = 'http://192.168.1.4:8000/payment_return'  # get from config
 VNPAY_PAYMENT_URL = 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'  # get from config
 VNPAY_API_URL = 'https://sandbox.vnpayment.vn/merchant_webapi/api/transaction'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'trantrongnhan162004@gmail.com'
+EMAIL_HOST_PASSWORD = 'mtzx lhwb azhp ycqa'
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

@@ -1,0 +1,23 @@
+{
+  "name": "apartmentmanagementmultiplatform",
+  "version": "1.0.0",
+  "description": "Đây là một hệ thống quản lý cư dân chung cư đa nền tảng, bao gồm **trang web dành cho quản trị viên** và **ứng dụng di động và website dành cho cư dân**. Hệ thống giúp quản lý tài khoản, phản ánh, khảo sát, thanh toán điện tử, và tương tác thời gian thực giữa cư dân và ban quản trị.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "concurrently \"cd apartmentmanagementweb && npm start\" \"cd apartmentmanagementmobileapp && npm start\"",
+    "start:web": "cd apartmentmanagementweb && npm start",
+    "start:mobile": "cd apartmentmanagementmobileapp && npm start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/trngnhan/apartmentManagementMultiPlatform.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/trngnhan/apartmentManagementMultiPlatform/issues"
+  },
+  "homepage": "https://github.com/trngnhan/apartmentManagementMultiPlatform#readme"
+}

@@ -1,7 +1,7 @@
 import axios from "axios";
 import { set } from "firebase/database";
 
-const BASE_URL = "http://192.168.1.26:8000/";
+const BASE_URL = "http://192.168.1.4:8000/";
 
 export const endpoints = {
     login: "/o/token/",

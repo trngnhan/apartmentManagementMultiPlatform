@@ -160,7 +160,7 @@ function ResidentHome() {
                     },
                     {
                         img: "/assets/payment.png",
-                        label: "Thanh toán phí chung cư",
+                        label: "Thanh toán phí",
                         onClick: () => navigate("/resident/payment")
                     }
                 ].map((item, idx) => (

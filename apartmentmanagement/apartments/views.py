@@ -46,6 +46,8 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from .vnpay import vnpay
+from django.core.mail import EmailMessage
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -414,7 +416,9 @@ class PaymentTransactionViewSet(viewsets.GenericViewSet, generics.ListAPIView):
                 category=category,
                 amount=category.total_amount,
                 method='VNPAY',
-                status='PENDING'
+                status='PENDING',
+                paid_date=None,
+                resident=resident,
             )
 
             vnp = vnpay()
@@ -1254,6 +1258,8 @@ def payment_return(request):
         vnp_BankCode = inputData.get('vnp_BankCode', '')
         vnp_CardType = inputData.get('vnp_CardType', '')
         print("VNPay return data:", inputData)
+
+
         if vnp.validate_response(settings.VNPAY_HASH_SECRET_KEY):
             # Ưu tiên kiểm tra TransactionStatus nếu thiếu ResponseCode
             if vnp_ResponseCode == "00" or vnp_TransactionStatus == "00":
@@ -1263,6 +1269,28 @@ def payment_return(request):
                     payment_log.transaction_id = vnp_TransactionNo
                     payment_log.paid_date = timezone.now()
                     payment_log.save()
+
+                    email = None
+                    if hasattr(payment_log, "resident") and hasattr(payment_log.resident, "user"):
+                        email = getattr(payment_log.resident.user, "email", None)
+                        print("Email: ", email)
+                    if email:
+                        subject = "Thanh toán thành công"
+                        html_content = f"""
+                            <h2>Thanh toán thành công!</h2>
+                            <p>Bạn đã thanh toán thành công cho hóa đơn <b>#{order_id}</b> với số tiền <b>{amount:,.0f} VND</b>.</p>
+                            <p>Mô tả: {order_desc}</p>
+                            <p>Mã giao dịch: {vnp_TransactionNo}</p>
+                            <p>Xin cảm ơn!</p>
+                            """
+                        msg = EmailMessage(
+                            subject=subject,
+                            body=html_content,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            to=[email],
+                        )
+                        msg.content_subtype = "html"
+                        msg.send(fail_silently=True)
                 except PaymentTransaction.DoesNotExist:
                     pass  # Có thể log lỗi nếu cần
                 result = "Thành công"
